@@ -1,8 +1,20 @@
 # Apna Hisaab: Implementation-Agent Handoff (PS07, OpenForge Track 1)
 
+> **⚠️ v2 update (Fri 16 Oct 2026 = the actual build day):** [`BUILD_PLAN.md`](BUILD_PLAN.md) is now the execution plan and **overrides this file wherever they differ**. Changes:
+> - GPS allowed (opt-in);
+> - hybrid online/offline tiers;
+> - voice plus an optional photo per entry;
+> - consented "Record thekedar";
+> - co-worker confirmation;
+> - per-day corroboration levels;
+> - a Telegram thekedar agent (template-only);
+> - the UI cloned from `UI/`, mobile-first.
+>
+> The schedule in §7.3 below is superseded by BUILD_PLAN §3. The module specs in §10.4–§10.13 still apply. Rationale: [`suggestions.md`](suggestions.md).
+>
 > Self-contained build brief. Read [`PS07_Strategy_Report.md`](PS07_Strategy_Report.md) for the evidence, the decision rationale and judge Q&A.
 >
-> **Do not write product code before the Final Build Day (Sat 17 Oct 2026)**. Rule 5 of the rulebook disqualifies "pre-existing/unoriginal work". Before that date, only environment setup, model downloads, CLI benchmarks, data transcription and design content are allowed, and they must be disclosed in the README.
+> **Do not write product code before the Final Build Day (now Fri 16 Oct 2026; originally planned as Sat 17 Oct)**. Rule 5 of the rulebook disqualifies "pre-existing/unoriginal work". Before that date, only environment setup, model downloads, CLI benchmarks, data transcription and design content are allowed, and they must be disclosed in the README.
 
 ## Key facts this brief depends on
 
@@ -129,6 +141,8 @@
 
 #### 7.3 Build day: Sat 17 Oct, 07:00–17:00, at the college (solo build, with Claude Code as a coding assistant)
 
+> **Superseded:** the build day is Fri 16 Oct. Use the phases, checkpoints and cut line in [`BUILD_PLAN.md`](BUILD_PLAN.md) §3–§4. The table below is kept for reference only.
+
 **Confirmed by the coordinators:** own laptop allowed; power sockets available; **internet available throughout**; submit **repo + README**; **judges come to your desk and judge on the spot**.
 
 **Confirmed by you:** you are building **solo**, with Claude Pro (usage-limited, one reset) as your coding assistant. Using an AI coding assistant is a development tool, not the product's core AI (Rule 4.5). **Disclose it in the README.**
@@ -191,17 +205,17 @@
 ### 10.0 Hard constraints (read first)
 
 1. **Write product code only on Build Day (17 Oct 2026).** Before that: environment setup, downloads, benchmarks, data and design only (Rule 5). Disclose prep in the README.
-2. **No closed AI APIs or cloud calls anywhere.** All inference is local and offline. Set `HF_HUB_OFFLINE=1` and `TRANSFORMERS_OFFLINE=1`; bind the LLM to 127.0.0.1; no CDNs (bundle fonts and icons); no telemetry.
+2. **No closed AI APIs anywhere.** All inference uses open-weight models on our own hardware: the laptop, our own cloud GPU, or the phone. *(v2: internet is allowed for the online tier and for Telegram as a message transport. Capture still works offline; see BUILD_PLAN §3 P2 and P5.)* No CDNs (bundle fonts and icons); no telemetry.
 3. **The LLM extracts; code computes.** No LLM arithmetic, legal reasoning or free-text read-back.
 4. **Never invent values.** A field without a transcript quote is `null`. Unconfirmed values never enter computations.
 5. **Audio is saved and hashed before any processing.**
 6. **Synthetic demo data only**, watermarked. No real people or real builders.
 7. Languages: **Marathi and Hindi** (including Hinglish) for the worker; English for the paralegal view and packet labels.
 8. Repo license: **Apache-2.0.** Never commit model weights.
-9. **The AI never contacts, argues with, phones or negotiates with the thekedar.** Bol ke Batao speaks only fixed templates when the worker presses play. Recording his reply always begins with a spoken notice.
-10. **Nothing is ever sent automatically.** Bhejo is worker-initiated, shows a risk note, excludes witness audio by default, and logs every share.
+9. **The AI never argues, phones or negotiates with the thekedar.** *(v2: the Telegram agent in BUILD_PLAN §7 may message him, but only with code-filled templates. It introduces itself and says the chat is recorded, and a hostile message gets no reply.)* Bol ke Batao speaks only fixed templates when the worker presses play. Recording him always begins with a spoken notice that can't be skipped (BUILD_PLAN §8).
+10. **Nothing is sent without the worker's choice.** Bhejo is worker-initiated, shows a risk note, excludes witness audio by default, and logs every share. *(v2: Telegram daily updates are sent automatically only while the worker's `auto_daily` setting is on, and the worker can turn it off.)*
 11. **Serve over HTTPS** (mkcert cert for the laptop's LAN IP + localhost; root CA installed on the demo phone). `getUserMedia` (microphone), service workers (PWA install) and Web Share **do not work on plain-HTTP LAN origins**. Regenerate the cert at 07:00 if the venue IP differs.
-12. The **app shell must work offline once installed** (service worker precache). If the hub is unreachable, recordings queue in IndexedDB on the phone and upload when it is reachable again. **Audio is never lost.**
+12. The **app shell must work offline once installed** (service worker precache). If the hub is unreachable, recordings queue in IndexedDB on the phone and upload when it is reachable again. **Audio is never lost.** *(v2: the phone also hashes the audio and photo in the browser, captures GPS, and may process with on-device models; the server re-processes when back online. See BUILD_PLAN §3 P2/P5.)*
 
 ### 10.1 Direction
 
@@ -233,6 +247,8 @@ apna-hisaab/
 ```
 
 ### 10.3 Data model (SQLite)
+
+> **v2:** add the columns, tables, events and schemas in [`BUILD_PLAN.md`](BUILD_PLAN.md) §5: GPS, photo kinds, `client_sha256`, `speaker`, `coworker_confirm`, the Telegram tables and the `thekedar_reply` schema.
 
 - `workers(id TEXT PK, display_name, language 'hi'|'mr', category 'unskilled'|'semi_skilled'|'skilled'|'highly_skilled'|NULL, default_break_min INT NULL, pin_hash, consent_keep_audio BOOL, created_at)`
 - `sites(id PK, worker_id, name, landmark, city, state, sphere 'state'|'central'|'unknown', zone 'I'|'II'|'III'|NULL, zone_confirmed BOOL, principal_employer NULL, maharera_no NULL)`
@@ -490,11 +506,11 @@ Steps 1–12 are the **MUST cut line**. Add **HTTPS + PWA manifest/service worke
 
 ### 10.17 Must NOT build
 
-- Closed or cloud AI.
-- GPS or location tracking.
+- Closed AI APIs (open-weight models on our own cloud GPU are fine).
+- ~~GPS or location tracking~~ → *v2: opt-in GPS per entry/photo is allowed; no continuous background tracking.*
 - Covert recording.
 - Employer-facing portals or public employer ratings.
-- Automatic sharing or uploads.
+- Automatic sharing of evidence files. *(v2 exception: Telegram daily-update templates while `auto_daily` is on.)*
 - "Legally valid" or "proof" claims.
 - LLM-generated legal text or arithmetic.
 - Hardcoded or unverified rates without a status label.
@@ -502,7 +518,7 @@ Steps 1–12 are the **MUST cut line**. Add **HTTPS + PWA manifest/service worke
 - Blockchain.
 - User accounts or cloud sync.
 - Multi-device crypto attestation (deferred).
-- **Any AI that talks freely to, argues with, phones or negotiates with the thekedar.** Bol ke Batao is template-only.
+- **Any AI that talks freely to, argues with, phones or negotiates with the thekedar.** Bol ke Batao and the Telegram agent (BUILD_PLAN §7) are template-only.
 - Recording without the spoken notice.
 - Automatic or default sending of witness audio.
 - Free-form LLM answers to legal questions (intent → pre-approved answers only).

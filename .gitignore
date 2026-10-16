@@ -27,3 +27,6 @@ dist/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# local https certs
+certs/

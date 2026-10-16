@@ -1,0 +1,8 @@
+/* Design tokens. P2 replaces these with the values extracted from UI/ (G0 design system). */
+:root {
+  --font-body: 'Noto Sans Devanagari', system-ui, sans-serif;
+  --color-bg: #ffffff;
+  --color-text: #1a1a1a;
+  --app-max-width: 430px;
+  --tap-min: 48px;
+}
