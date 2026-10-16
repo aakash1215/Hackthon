@@ -1,53 +1,57 @@
-// Onboarding (UI/ 1.png, O2, O3, O4 PIN, O5, O6, O7) and login for an existing account (UI/ A1).
+// Onboarding (O2, O3, O4 PIN, O5, O6, O7) login (UI/ A1) is the start page.
 // Composed additions in the same style: name field (O5), GPS opt-in card (O6), 4th consent bullet (GPS).
 import { useEffect, useState } from 'react'
 import {
-  Axe, BookOpen, LogIn, NotebookPen, Plus, BrickWall, Check, ChevronDown, CircleCheck, CircleHelp, Hammer, IndianRupee, Info, MapPin,
-  Mic, PaintRoller, Pencil, Send, ShieldCheck, Shovel, Smartphone, Trash2, Volume2, ArrowRight,
+  Axe, NotebookPen, Plus, BrickWall, Check, ChevronDown, CircleHelp, Hammer, Info, MapPin,
+  PaintRoller, Pencil, RefreshCw, Send, ShieldCheck, Shovel, Smartphone, Trash2, UserPlus, UserRound, Volume2, WifiOff, ArrowRight,
 } from 'lucide-react'
 import { Btn, Spinner, TopBar, useApp } from '../components/Ui.jsx'
 import PinPad from '../components/PinPad.jsx'
+import VoiceInput from '../components/VoiceInput.jsx'
 import * as api from '../lib/api.js'
 import { clearLocalData, profileFromServer } from '../lib/profile.js'
 import { getFix, speak } from '../lib/device.js'
 import { queueJson } from '../lib/sync.js'
 
-const STEPS = ['welcome', 'language', 'consent', 'pin', 'category', 'site', 'contractor']
+const STEPS = ['language', 'consent', 'pin', 'category', 'site', 'contractor']
 
 export default function Onboarding() {
   const { setProfile } = useApp()
   const [step, setStep] = useState(0)
-  const [login, setLogin] = useState(false)
+  const [login, setLogin] = useState(true) // login (A1) is the start page
   const [d, setD] = useState({
-    language: 'hi', consent_keep_audio: true, display_name: '', category_label: 'helper', category: 'unskilled',
-    category_confirmed: false, site: { name: '', landmark: '', city: 'छत्रपति संभाजीनगर', zone: 'I', zone_confirmed: false, sphere: 'state' },
+    // Answers the worker must give start empty (no pre-picked category or sphere): never invent values.
+    language: 'hi', consent_keep_audio: true, display_name: '', category_label: null, category: null,
+    category_confirmed: false, site: { name: '', landmark: '', city: 'छत्रपति संभाजीनगर', zone: 'I', zone_confirmed: false, sphere: null },
     gps: null, gps_opt_in: false, thekedar: { name: '', phone: '', phone_unknown: false },
     usual: { start: '09:00', end: '19:00', break_min: 60 }, agreed_daily: '', wage_period: 'weekly',
   })
   const up = (patch) => setD((x) => ({ ...x, ...patch }))
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1))
-  const back = () => setStep((s) => Math.max(s - 1, 0))
-  const progress = { step: step, total: 7 }
+  const back = () => (step === 0 ? setLogin(true) : setStep((s) => s - 1))
+  const progress = { step: step + 1, total: 7 }
 
   async function finish() {
     const workerId = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
     const p = { ...d, worker_id: workerId, onboarded: true, created: new Date().toISOString() }
+    await clearLocalData() // a new account starts clean: no earlier person's records, queue or caches
+    // (before the queueJson calls below, which this would otherwise wipe)
     // Profile writes are queued like recordings, so onboarding also works without the hub.
     await queueJson('POST', '/api/workers', {
-      id: workerId, display_name: d.display_name || null, language: d.language === 'mr' ? 'mr' : 'hi',
+      id: workerId, display_name: d.display_name.trim(), language: d.language === 'mr' ? 'mr' : 'hi',
       category: d.category, default_break_min: d.usual.break_min, consent_keep_audio: d.consent_keep_audio,
       gps_opt_in: d.gps_opt_in,
     })
     if (d.pin) await queueJson('POST', `/api/workers/${workerId}/pin`, { pin: d.pin }) // stored hashed on the hub
     await queueJson('POST', '/api/sites', {
-      worker_id: workerId, name: d.site.name || null, landmark: d.site.landmark || null, city: d.site.city,
+      worker_id: workerId, name: d.site.name.trim(), landmark: d.site.landmark.trim() || null, city: d.site.city,
       state: 'Maharashtra', sphere: d.site.sphere, zone: d.site.zone, zone_confirmed: d.site.zone_confirmed,
       employment_sn: 11, wage_period: d.wage_period,
       ...(d.gps_opt_in && d.gps ? { site_lat: d.gps.lat, site_lon: d.gps.lon, site_gps_accuracy_m: d.gps.acc } : {}),
     })
     if (d.thekedar.name) {
       await queueJson('POST', '/api/parties', {
-        worker_id: workerId, role: 'contractor', name: d.thekedar.name,
+        worker_id: workerId, role: 'contractor', name: d.thekedar.name.trim(),
         phone: d.thekedar.phone_unknown ? null : d.thekedar.phone || null, source: 'stated',
       })
     }
@@ -55,10 +59,27 @@ export default function Onboarding() {
     await setProfile(profile)
   }
 
-  if (login) return <Login onNew={() => { setLogin(false); setStep(1) }} onBack={() => setLogin(false)} />
-  const S = { welcome: Welcome, language: Language, consent: Consent, pin: PinStep, category: Category, site: Site, contractor: Contractor }[STEPS[step]]
-  return <S d={d} up={up} next={next} back={back} progress={progress} finish={finish} onLogin={() => setLogin(true)} />
+  if (login) return <Login onNew={() => { setLogin(false); setStep(0) }} />
+  const S = { language: Language, consent: Consent, pin: PinStep, category: Category, site: Site, contractor: Contractor }[STEPS[step]]
+  return <S d={d} up={up} next={next} back={back} progress={progress} finish={finish} />
 }
+
+// Required-field gate for a step: errors show only after the first "आगे बढ़ें" tap.
+function useRequired(errs, onOk) {
+  const { toast } = useApp()
+  const [tried, setTried] = useState(false)
+  const go = () => {
+    if (Object.values(errs).some(Boolean)) { setTried(true); toast('लाल निशान वाली बातें भरें'); return }
+    onOk()
+  }
+  return { show: (k) => (tried ? errs[k] : null), go }
+}
+
+function Need({ msg }) {
+  return msg ? <p className="err field-err">{msg}</p> : null
+}
+
+const NAME_OK = (s) => s.trim().length >= 2
 
 // O4: create a 4-digit PIN (enter twice).
 function PinStep({ d, up, next, back, progress }) {
@@ -82,32 +103,37 @@ function PinStep({ d, up, next, back, progress }) {
 }
 
 // A1: who is using the app? Pick your name, then your PIN. Needs the hub (the account lives there).
-function Login({ onNew, onBack }) {
+function Login({ onNew }) {
   const { setProfile, toast } = useApp()
   const [people, setPeople] = useState(null)
   const [sel, setSel] = useState(null)
   const [msg, setMsg] = useState(null)
   const [tries, setTries] = useState(0)
   const [busy, setBusy] = useState(false)
-  const [mustSet, setMustSet] = useState(null) // server data while a legacy account creates its PIN
-  const [first, setFirst] = useState(null)
+
+  const [loadKey, setLoadKey] = useState(0)
 
   useEffect(() => {
+    setPeople(null)
     api.apiJson('GET', '/api/workers/directory', null, { timeoutMs: 6000 })
       .then((r) => { setPeople(r.items); if (r.items.length) setSel(r.items[0]) })
       .catch(() => setPeople(false))
-  }, [])
+  }, [loadKey])
 
   async function enter(res) {
     await clearLocalData()
     await setProfile(profileFromServer(res))
   }
 
+  // One PIN entry at login. An account without a PIN yet sets it with this same entry (no confirm screen).
   async function tryLogin(pin) {
     setBusy(true)
     try {
-      const res = await api.apiJson('POST', '/api/login', { worker_id: sel.id, pin: pin || null })
-      if (res.needs_pin) { setMustSet(res); setMsg(null); return }
+      const res = await api.apiJson('POST', '/api/login', { worker_id: sel.id, pin: sel.has_pin ? pin : null })
+      if (res.needs_pin) {
+        await api.apiJson('POST', `/api/workers/${sel.id}/pin`, { pin })
+        toast('PIN बन गया')
+      }
       await enter(res)
     } catch (e) {
       const code = e.code || ''
@@ -120,39 +146,36 @@ function Login({ onNew, onBack }) {
     }
   }
 
-  async function setNewPin(pin) {
-    if (!first) { setFirst(pin); return }
-    if (pin !== first) { setFirst(null); setTries((t) => t + 1); setMsg('दोनों PIN अलग थे — फिर से बनाएँ'); return }
-    try {
-      await api.apiJson('POST', `/api/workers/${mustSet.worker.id}/pin`, { pin })
-      toast('PIN बन गया')
-      await enter(mustSet)
-    } catch (e) {
-      setMsg(`नहीं हो पाया (${e.code})`)
-    }
-  }
-
-  if (mustSet) {
-    return (
-      <div className="screen">
-        <TopBar onBack={() => { setMustSet(null); setFirst(null) }} speakText="इस खाते का PIN नहीं बना है। अभी 4 अंकों का PIN बनाएँ।" />
-        <h1 className="title">{first ? 'वही PIN फिर डालें' : 'अपना PIN बनाएँ'}</h1>
-        <p className="subtitle">{msg || `${mustSet.worker.display_name || 'इस खाते'} का PIN अभी तक नहीं बना`}</p>
-        <PinPad onDone={setNewPin} resetKey={`${first}-${tries}`} error={tries} />
-      </div>
-    )
-  }
-
   return (
     <div className="screen">
-      <TopBar onBack={onBack} speakText="कौन इस्तेमाल कर रहा है? अपना नाम चुनें, फिर PIN डालें।" />
+      <TopBar speakText="कौन इस्तेमाल कर रहा है? अपना नाम चुनें, फिर PIN डालें।" />
       <div className="login-logo"><NotebookPen size={36} /></div>
       <h1 className="login-title">कौन इस्तेमाल कर रहा है?</h1>
-      {people === null && <div className="row" style={{ justifyContent: 'center' }}><Spinner /> खोल रहे हैं…</div>}
-      {people === false && (
-        <div className="info-row" style={{ marginTop: 10 }}><CircleHelp size={20} /> लॉग इन के लिए हब से जुड़ना ज़रूरी है — खाता हब पर रहता है। जुड़कर फिर कोशिश करें।</div>
+      {people === null && (
+        <div className="login-state"><Spinner /><p className="muted" style={{ margin: 0 }}>खाते खोल रहे हैं…</p></div>
       )}
-      {people && (
+      {people === false && (
+        <div className="login-state">
+          <div className="card pad login-card">
+            <span className="icon-bubble login-bubble warn"><WifiOff size={28} /></span>
+            <div className="login-card-title">हब से नहीं जुड़ पाए</div>
+            <p className="login-card-text">आपका खाता हब पर रहता है। फ़ोन और हब एक ही Wi-Fi पर हों, फिर कोशिश करें।</p>
+            <Btn icon={RefreshCw} onClick={() => setLoadKey((k) => k + 1)}>फिर से कोशिश करें</Btn>
+          </div>
+          <Btn variant="outline" icon={UserPlus} onClick={onNew}>नया खाता बनाएँ</Btn>
+        </div>
+      )}
+      {people && people.length === 0 && (
+        <div className="login-state">
+          <div className="card pad login-card">
+            <span className="icon-bubble login-bubble"><UserRound size={28} /></span>
+            <div className="login-card-title">अभी कोई खाता नहीं बना</div>
+            <p className="login-card-text">इस हब पर पहला खाता बनाएँ — 2 मिनट लगेंगे।</p>
+            <Btn icon={UserPlus} onClick={onNew}>नया खाता बनाएँ</Btn>
+          </div>
+        </div>
+      )}
+      {people && people.length > 0 && (
         <>
           <div className="who-row">
             {people.map((w) => (
@@ -166,52 +189,18 @@ function Login({ onNew, onBack }) {
               <span className="who-name">नया</span>
             </button>
           </div>
-          {sel && (sel.has_pin ? (
+          {sel && (
             <>
-              <p className={`center ${msg ? 'err' : 'muted'}`} style={{ margin: '14px 0 6px' }}>{msg || `${sel.display_name} — अपना PIN डालें`}</p>
+              <p className={`center ${msg ? 'err' : 'muted'}`} style={{ margin: '14px 0 6px' }}>
+                {msg || (sel.has_pin ? `${sel.display_name} — अपना PIN डालें` : `${sel.display_name} — नया 4 अंकों का PIN बनाएँ`)}
+              </p>
               <PinPad onDone={tryLogin} resetKey={`${sel.id}-${tries}`} error={tries} disabled={busy}
-                leftSlot={<button className="link" onClick={() => toast('PIN भूल गए? यूनियन / सहायक की मदद से हब पर नया PIN बनवाएँ')}>भूल गए?</button>} />
+                leftSlot={sel.has_pin ? <button className="link" onClick={() => toast('PIN भूल गए? यूनियन / सहायक की मदद से हब पर नया PIN बनवाएँ')}>भूल गए?</button> : null} />
             </>
-          ) : (
-            <div className="stack" style={{ marginTop: 16 }}>
-              <p className="center muted" style={{ margin: 0 }}>{sel.display_name} — इस खाते का PIN अभी नहीं बना</p>
-              <Btn icon={LogIn} onClick={() => tryLogin(null)} disabled={busy}>आगे बढ़ें और PIN बनाएँ</Btn>
-            </div>
-          ))}
+          )}
         </>
       )}
       <div className="trust-line" style={{ marginTop: 'auto', paddingTop: 16 }}><ShieldCheck size={20} /> PIN सिर्फ़ आपके पास · हब पर छिपाकर (hash) रखा जाता है</div>
-    </div>
-  )
-}
-
-function Welcome({ next, onLogin }) {
-  return (
-    <div className="screen">
-      <div className="welcome-hero">
-        <div className="app-logo"><BookOpen size={44} strokeWidth={2.2} /></div>
-        <h1 className="welcome-title">अपना हिसाब</h1>
-        <p className="welcome-sub">मज़दूरी का अपना रिकॉर्ड — बस बोलकर</p>
-        <span className="welcome-pill">हिंदी · ऑफ़लाइन · आवाज़ से</span>
-      </div>
-      <div className="welcome-cards">
-        {[
-          { i: Mic, n: 'बोलें', t: 'आज का काम आवाज़ में दर्ज करें' },
-          { i: CircleCheck, n: 'पक्का करें', t: 'कार्ड देखें, सही हो तो सेव' },
-          { i: IndianRupee, n: 'हिसाब देखें', t: 'कितना बनता है, कितना बाकी' },
-        ].map(({ i: I, n, t }) => (
-          <div key={n} className="welcome-card">
-            <div className="bubble"><I size={26} /></div>
-            <div className="name">{n}</div>
-            <div className="desc">{t}</div>
-          </div>
-        ))}
-      </div>
-      <div className="trust-line"><ShieldCheck size={22} /> आपका डेटा आपके फ़ोन और हब में · बिना पूछे कुछ नहीं भेजा जाता</div>
-      <div className="bottom-actions">
-        <Btn icon={ArrowRight} onClick={next}>शुरू करें</Btn>
-        <Btn variant="plain" icon={LogIn} onClick={onLogin}>पहले से खाता है? लॉग इन करें</Btn>
-      </div>
     </div>
   )
 }
@@ -310,19 +299,25 @@ const CATS = [
 ]
 
 function Category({ d, up, next, back, progress }) {
-  const sel = CATS.find((c) => c.id === d.category_label) || CATS[0]
+  const sel = CATS.find((c) => c.id === d.category_label) || null
+  const req = useRequired({
+    name: !NAME_OK(d.display_name) && 'अपना नाम लिखें — लॉग इन में यही दिखेगा',
+    cat: !sel && 'अपना काम चुनें — पता न हो तो ‘पता नहीं’ दबाएँ',
+  }, next)
   return (
     <div className="screen">
       <TopBar onBack={back} progress={progress} speakText="आप क्या काम करते हैं? तस्वीर पर टैप करें" />
       <h1 className="title">आप क्या काम करते हैं?</h1>
       <p className="subtitle">तस्वीर पर टैप करें</p>
       <div className="label" style={{ marginTop: 0 }}>आपका नाम</div>
-      <div className="field" style={{ marginBottom: 14 }}>
-        <input value={d.display_name} onChange={(e) => up({ display_name: e.target.value })} placeholder="नाम लिखें" maxLength={40} />
+      <div className={`field ${req.show('name') ? 'invalid' : ''}`}>
+        <input value={d.display_name} onChange={(e) => up({ display_name: e.target.value })} placeholder="नाम लिखें या बोलें" maxLength={40} />
+        <VoiceInput field="name" language={d.language} keepAudio={d.consent_keep_audio} onText={(v) => up({ display_name: v })} />
       </div>
-      <div className="grid-2">
+      <Need msg={req.show('name')} />
+      <div className="grid-2" style={{ marginTop: 14 }}>
         {CATS.map((c) => {
-          const on = c.id === sel.id
+          const on = c.id === sel?.id
           const I = c.i
           return (
             <button key={c.id} className={`tile ${on ? 'on' : ''}`} onClick={() => up({ category_label: c.id, category: c.cat, category_confirmed: false })}>
@@ -333,17 +328,20 @@ function Category({ d, up, next, back, progress }) {
           )
         })}
       </div>
-      <div className="card ask ask-card" style={{ marginTop: 14 }}>
-        <div className="grow">
-          <div className="title">आपकी श्रेणी: {sel.label}</div>
-          <div className="sub">{sel.n} का काम — साथी से पक्का कर लें</div>
+      <Need msg={req.show('cat')} />
+      {sel && (
+        <div className="card ask ask-card" style={{ marginTop: 14 }}>
+          <div className="grow">
+            <div className="title">आपकी श्रेणी: {sel.label}</div>
+            <div className="sub">{sel.n} का काम — साथी से पक्का कर लें</div>
+          </div>
+          <button className={`chip ${d.category_confirmed ? 'ok' : 'ask'}`} onClick={() => up({ category_confirmed: !d.category_confirmed })}>
+            {d.category_confirmed ? <><Check size={16} /> पक्का</> : <><CircleHelp size={16} /> पक्का करें</>}
+          </button>
         </div>
-        <button className={`chip ${d.category_confirmed ? 'ok' : 'ask'}`} onClick={() => up({ category_confirmed: !d.category_confirmed })}>
-          {d.category_confirmed ? <><Check size={16} /> पक्का</> : <><CircleHelp size={16} /> पक्का करें</>}
-        </button>
-      </div>
+      )}
       <div className="bottom-actions">
-        <Btn icon={ArrowRight} onClick={next}>आगे बढ़ें</Btn>
+        <Btn icon={ArrowRight} onClick={req.go}>आगे बढ़ें</Btn>
       </div>
     </div>
   )
@@ -358,6 +356,11 @@ function Site({ d, up, next, back, progress }) {
   const site = d.site
   const setSite = (patch) => up({ site: { ...site, ...patch } })
   const suggested = site.city !== 'अन्य'
+  const req = useRequired({
+    name: !NAME_OK(site.name) && 'साइट का नाम लिखें',
+    zone: !site.zone && 'ज़ोन चुनें — पता न हो तो साथी या यूनियन से पूछें',
+    sphere: !site.sphere && 'हाँ / नहीं / पता नहीं में से एक चुनें',
+  }, next)
 
   async function addGps() {
     setLocating(true)
@@ -373,9 +376,10 @@ function Site({ d, up, next, back, progress }) {
       <h1 className="title">काम की जगह</h1>
       <p className="subtitle">बस नाम और पहचान — GPS आपकी मर्ज़ी से</p>
       <div className="label" style={{ marginTop: 0 }}>साइट का नाम</div>
-      <div className="field"><input value={site.name} onChange={(e) => setSite({ name: e.target.value })} placeholder="जैसे: एग्ज़ाम्पल हाइट्स" /><Mic size={22} /></div>
+      <div className={`field ${req.show('name') ? 'invalid' : ''}`}><input value={site.name} onChange={(e) => setSite({ name: e.target.value })} placeholder="जैसे: एग्ज़ाम्पल हाइट्स" maxLength={60} /><VoiceInput field="name" language={d.language} keepAudio={d.consent_keep_audio} onText={(v) => setSite({ name: v })} /></div>
+      <Need msg={req.show('name')} />
       <div className="label">पास की पहचान</div>
-      <div className="field"><input value={site.landmark} onChange={(e) => setSite({ landmark: e.target.value })} placeholder="जैसे: बस स्टैंड के पीछे" /><Mic size={22} /></div>
+      <div className="field"><input value={site.landmark} onChange={(e) => setSite({ landmark: e.target.value })} placeholder="जैसे: बस स्टैंड के पीछे" maxLength={60} /><VoiceInput field="text" language={d.language} keepAudio={d.consent_keep_audio} onText={(v) => setSite({ landmark: v })} /></div>
       <div className="label">शहर</div>
       <div className="field">
         <select value={site.city} onChange={(e) => setSite({ city: e.target.value, zone: e.target.value === 'अन्य' ? null : 'I', zone_confirmed: false })}>
@@ -401,6 +405,7 @@ function Site({ d, up, next, back, progress }) {
               onClick={() => setSite({ zone: z, zone_confirmed: false })}>ज़ोन {z}</button>
           ))}
         </div>
+        <Need msg={req.show('zone')} />
       </div>
 
       <div className="card pad" style={{ marginTop: 12 }}>
@@ -410,6 +415,7 @@ function Site({ d, up, next, back, progress }) {
             <button key={v} className={`tchip ${site.sphere === v ? 'on' : ''}`} style={{ flex: 1, padding: 0 }} onClick={() => setSite({ sphere: v })}>{t}</button>
           ))}
         </div>
+        <Need msg={req.show('sphere')} />
       </div>
 
       {/* Composed (not in UI/): GPS opt-in, BUILD_PLAN rule 7 — ask, show the coordinates, store with the site. */}
@@ -435,7 +441,7 @@ function Site({ d, up, next, back, progress }) {
       </div>
 
       <div className="bottom-actions">
-        <Btn icon={ArrowRight} onClick={next}>आगे बढ़ें</Btn>
+        <Btn icon={ArrowRight} onClick={req.go}>आगे बढ़ें</Btn>
       </div>
     </div>
   )
@@ -452,18 +458,27 @@ function Contractor({ d, up, back, progress, finish }) {
   const setT = (patch) => up({ thekedar: { ...t, ...patch } })
   const startH = Number(d.usual.start.slice(0, 2))
   const endH = Number(d.usual.end.slice(0, 2)) - 12
+  const digits = t.phone.replace(/\D/g, '')
+  const wage = Number(d.agreed_daily)
+  const req = useRequired({
+    name: !NAME_OK(t.name) && 'ठेकेदार का नाम लिखें',
+    phone: !t.phone_unknown && !/^(91)?[6-9]\d{9}$/.test(digits) && (digits ? '10 अंकों का सही नंबर डालें' : 'नंबर डालें, या ‘पता नहीं’ दबाएँ'),
+    wage: !(wage >= 100 && wage <= 5000) && (d.agreed_daily ? '₹100 से ₹5000 के बीच लिखें' : 'रोज़ की तय मज़दूरी लिखें'),
+  }, async () => { setBusy(true); await finish() })
   return (
     <div className="screen">
       <TopBar onBack={back} progress={{ ...progress, step: 7 }} speakText="ठेकेदार और मज़दूरी। जो पता हो वही भरें" />
       <h1 className="title">ठेकेदार और मज़दूरी</h1>
       <p className="subtitle">जो पता हो वही भरें, बाकी ‘पता नहीं’ रहने दें</p>
       <div className="label" style={{ marginTop: 0 }}>ठेकेदार का नाम</div>
-      <div className="field"><input value={t.name} onChange={(e) => setT({ name: e.target.value })} placeholder="जैसे: कैलाश" /><Mic size={22} /></div>
-      <div className="label">ठेकेदार का फ़ोन (चाहें तो)</div>
-      <div className="field">
+      <div className={`field ${req.show('name') ? 'invalid' : ''}`}><input value={t.name} onChange={(e) => setT({ name: e.target.value })} placeholder="जैसे: कैलाश" maxLength={40} /><VoiceInput field="name" language={d.language} keepAudio={d.consent_keep_audio} onText={(v) => setT({ name: v })} /></div>
+      <Need msg={req.show('name')} />
+      <div className="label">ठेकेदार का फ़ोन</div>
+      <div className={`field ${req.show('phone') ? 'invalid' : ''}`}>
         <input inputMode="tel" value={t.phone} disabled={t.phone_unknown} onChange={(e) => setT({ phone: e.target.value.replace(/[^\d+ ]/g, '') })} placeholder="नंबर डालें" />
         <button className={`pill-btn ${t.phone_unknown ? 'on' : ''}`} onClick={() => setT({ phone_unknown: !t.phone_unknown, phone: '' })}>पता नहीं</button>
       </div>
+      <Need msg={req.show('phone')} />
       <div className="two-col">
         <div>
           <div className="label">रोज़ का समय</div>
@@ -487,12 +502,13 @@ function Contractor({ d, up, back, progress, finish }) {
         </div>
       </div>
       <div className="label">तय मज़दूरी</div>
-      <div className="field">
+      <div className={`field ${req.show('wage') ? 'invalid' : ''}`}>
         <span style={{ fontWeight: 700, fontSize: 17 }}>₹</span>
         <input inputMode="numeric" value={d.agreed_daily} onChange={(e) => up({ agreed_daily: e.target.value.replace(/\D/g, '').slice(0, 5) })} placeholder="600" />
         <span style={{ fontWeight: 700 }}>/ दिन</span>
         <Pencil size={20} color="var(--text-2)" />
       </div>
+      <Need msg={req.show('wage')} />
       <div className="label">पैसा कब मिलता है?</div>
       <div className="toggle-chips" style={{ flexWrap: 'nowrap' }}>
         {PERIODS.map(([v, l]) => (
@@ -501,7 +517,7 @@ function Contractor({ d, up, back, progress, finish }) {
       </div>
       <div className="row small" style={{ marginTop: 12 }}><Info size={18} /> ये बातें बाद में भी बदल सकते हैं</div>
       <div className="bottom-actions">
-        <Btn icon={Check} disabled={busy} onClick={async () => { setBusy(true); await finish() }}>हो गया — हिसाब शुरू करें</Btn>
+        <Btn icon={Check} disabled={busy} onClick={req.go}>हो गया — हिसाब शुरू करें</Btn>
       </div>
     </div>
   )

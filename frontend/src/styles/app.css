@@ -191,21 +191,28 @@ h1.title { font-size: var(--fs-title); font-weight: 700; margin: 18px 0 4px; lin
 /* ---- welcome (splash) -------------------------------------------------- */
 .welcome-hero {
   /* full-bleed: cancel the .screen gutter */
-  margin: -14px calc(-1 * var(--gutter)) 0; padding: 72px var(--gutter) 40px; text-align: center;
-  background: linear-gradient(180deg, #e9dccb 0%, #d9b98f 55%, #c38a4f 100%);
-  position: relative;
+  margin: -14px calc(-1 * var(--gutter)) 0; padding: 64px var(--gutter) 36px; text-align: center;
+  background: linear-gradient(180deg, #efe4d6 0%, #e2cbac 60%, #d3ad80 100%);
+  border-radius: 0 0 32px 32px; box-shadow: 0 6px 18px rgba(108, 61, 2, 0.12);
+  position: relative; overflow: hidden;
 }
-.welcome-hero::after { content: ''; position: absolute; inset: 0; background: url('../assets/paper.jpg'); background-size: 360px auto; mix-blend-mode: multiply; opacity: 0.5; pointer-events: none; }
+.welcome-hero::after { content: ''; position: absolute; inset: 0; background: url('../assets/paper.jpg'); background-size: 360px auto; mix-blend-mode: multiply; opacity: 0.45; pointer-events: none; }
 .welcome-hero > * { position: relative; z-index: 1; }
-.app-logo { width: 76px; height: 76px; border-radius: 22px; background: #f5ede3; color: #b9834a; display: grid; place-items: center; margin: 0 auto 18px; }
-.welcome-title { font-size: 44px; font-weight: 700; color: #b9834a; margin: 0; text-shadow: 0 2px 0 rgba(90, 50, 10, 0.25); line-height: 1.2; }
-.welcome-sub { font-size: 17px; margin: 14px 0 22px; }
-.welcome-pill { display: inline-block; background: #f5ede3; color: var(--ask); font-weight: 700; border-radius: var(--radius-pill); padding: 8px 22px; font-size: 15px; }
-.welcome-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0; }
-.welcome-card { background: linear-gradient(180deg, #d8bb98, #c9a278); border-radius: 18px; padding: 14px 6px; text-align: center; }
-.welcome-card .bubble { width: 46px; height: 46px; border-radius: 50%; background: #f5ede3; color: #b9834a; display: grid; place-items: center; margin: 0 auto 8px; }
-.welcome-card .name { font-weight: 700; font-size: 16px; }
-.welcome-card .desc { font-size: 12.5px; color: var(--text-2); line-height: 1.35; }
+.app-logo {
+  width: 92px; height: 92px; border-radius: 28px; background: var(--brand); color: #fff;
+  display: grid; place-items: center; margin: 0 auto 22px; position: relative;
+  box-shadow: 0 10px 24px rgba(108, 61, 2, 0.32);
+}
+.app-logo-badge {
+  position: absolute; right: -10px; bottom: -10px; width: 38px; height: 38px; border-radius: 50%;
+  background: #fff; color: var(--brand); border: 3px solid var(--brand); display: grid; place-items: center;
+}
+.welcome-title { font-size: 42px; font-weight: 800; color: #2b1702; margin: 0; line-height: 1.2; letter-spacing: 0.3px; }
+.welcome-sub { font-size: 17px; color: #4a3a2a; margin: 10px 0 20px; }
+.welcome-pill {
+  display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.85); color: var(--brand);
+  border: 1px solid rgba(108, 61, 2, 0.18); font-weight: 700; border-radius: var(--radius-pill); padding: 8px 18px; font-size: 14.5px;
+}
 .trust-line { display: flex; gap: 6px; align-items: center; justify-content: center; color: var(--ok); font-weight: 700; font-size: 14px; text-align: center; }
 .trust-line svg { color: var(--brand); flex: none; }
 
@@ -250,7 +257,7 @@ h1.title { font-size: var(--fs-title); font-weight: 700; margin: 18px 0 4px; lin
 .tabbar {
   position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
   width: min(100%, var(--app-max-width)); background: #fff; border-top: 1px solid var(--border);
-  display: grid; grid-template-columns: repeat(4, 1fr); padding: 8px 4% calc(8px + env(safe-area-inset-bottom)); z-index: 20;
+  display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 2% calc(8px + env(safe-area-inset-bottom)); z-index: 20;
 }
 .tabbar button { display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-2); font-size: 14px; min-height: 52px; }
 .tabbar .ic { width: 52px; height: 32px; border-radius: 16px; display: grid; place-items: center; }
@@ -390,6 +397,8 @@ h1.title { font-size: var(--fs-title); font-weight: 700; margin: 18px 0 4px; lin
 .spinner { width: 22px; height: 22px; border: 3px solid var(--blue-ring); border-top-color: var(--brand); border-radius: 50%; animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .err { color: var(--urgent); font-weight: 700; font-size: 14px; }
+.field.invalid { border: 2px solid var(--urgent); background: var(--urgent-bg); }
+.field-err { margin: 6px 2px 0; }
 .hidden-input { display: none; }
 .settings-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--border); width: 100%; text-align: left; min-height: 60px; }
 .settings-row:first-child { border-top: 0; }
@@ -560,3 +569,50 @@ button.inbox-card { width: 100%; text-align: left; display: block; }
 .who.on .who-av { background: var(--brand); color: #fff; box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--brand); }
 .who-name { font-size: 14px; color: var(--text-2); max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .who.on .who-name { color: var(--text); font-weight: 700; }
+/* A1 composed states (hub offline / no accounts): same card + button language as the rest of the app */
+.login-state { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: stretch; gap: 12px; padding: 8px 0 16px; text-align: center; }
+.login-state > .spinner, .login-state > p { align-self: center; }
+.login-card { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 18px 18px; }
+.login-card .btn { width: 100%; margin-top: 6px; }
+.icon-bubble.login-bubble { width: 60px; height: 60px; background: var(--blue-soft); color: var(--brand); }
+.icon-bubble.login-bubble.warn { background: var(--ask-bg); color: var(--ask); }
+.login-card-title { font-size: var(--fs-card); font-weight: 700; }
+.login-card-text { margin: 0; font-size: 15px; color: var(--text-2); line-height: 1.5; }
+
+/* voice typing button inside a .field (VoiceInput) */
+.field .mic-btn {
+  width: 48px; height: 48px; margin-right: -10px; border-radius: 50%; flex: none;
+  display: grid; place-items: center; background: transparent; color: var(--brand);
+}
+.field .mic-btn.rec { background: var(--urgent); color: #fff; animation: mic-pulse 1.2s ease-out infinite; }
+.field .mic-btn.rec svg { color: #fff; }
+.field .mic-btn.busy .spinner { width: 20px; height: 20px; }
+@keyframes mic-pulse { 0% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.45); } 100% { box-shadow: 0 0 0 12px rgba(198, 40, 40, 0); } }
+
+/* ---- सहायक (agent) tab: composed from card / chip / field styles ---------- */
+.screen.with-tabs.agent-screen { gap: 10px; padding-bottom: calc(var(--tabbar-h) + var(--agent-dock-h) + 20px + env(safe-area-inset-bottom)); }
+:root { --agent-dock-h: 132px; }
+.agent-trust { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--ok); font-size: 13.5px; font-weight: 700; }
+.agent-trust svg { color: var(--brand); flex: none; }
+.agent-msg { display: flex; align-items: flex-start; gap: 8px; margin-top: 4px; }
+.agent-bubble { position: relative; flex: 1; min-width: 0; background: var(--card); border: 1px solid var(--border);
+  border-radius: 4px 16px 16px 16px; padding: 12px 44px 12px 14px; font-size: 16.5px; line-height: 1.5; }
+.agent-bubble p { margin: 0; }
+.agent-bubble .speaker { position: absolute; top: 8px; right: 8px; background: var(--blue-soft); }
+.agent-actions { margin-top: 10px; margin-right: -30px; }
+.agent-link { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px;
+  padding: 0 12px; border-radius: 12px; background: var(--blue-soft); color: var(--blue-ink); font-weight: 700; font-size: 16px; }
+.agent-link svg { color: var(--brand); }
+.me-bubble { align-self: flex-end; max-width: 82%; background: var(--brand); color: var(--brand-ink);
+  border-radius: 16px 4px 16px 16px; padding: 10px 14px; font-size: 16.5px; font-weight: 700; margin-top: 4px; }
+.agent-dock { position: fixed; left: 50%; transform: translateX(-50%); z-index: 19;
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); width: min(100%, var(--app-max-width));
+  box-sizing: border-box; padding: 10px var(--gutter) 10px; background: var(--paper); border-top: 1px solid var(--border); }
+.agent-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--gutter));
+  padding: 0 var(--gutter) 2px; scroll-padding: 0 var(--gutter); }
+.agent-chips::-webkit-scrollbar { display: none; }
+.agent-chips .chip { flex: none; white-space: nowrap; min-height: 48px; padding: 0 16px; font-size: 15px; }
+.agent-input { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.agent-send { width: 52px; height: 52px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: var(--brand); color: var(--brand-ink); }
+.agent-send:disabled { opacity: 0.45; }

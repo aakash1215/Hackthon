@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import api, auth, db, evidence_api, processing, telegram_bot
+from . import agent, api, auth, db, evidence_api, processing, telegram_bot
 from .config import REPO_ROOT, settings
 
 log = logging.getLogger("apna_hisaab")
@@ -40,6 +40,7 @@ app.include_router(auth.router)  # first: /api/workers/directory must win over /
 app.include_router(api.router)  # before the SPA catch-all below, so /api/* routes win
 app.include_router(evidence_api.router)
 app.include_router(telegram_bot.router)
+app.include_router(agent.router)
 
 
 async def _llm_status() -> dict:
@@ -76,6 +77,9 @@ async def health() -> dict:
         "llm": llm,
         "asr": asr,
         "tts": {"enabled": settings.tts_enabled},
+        # Optional ChatGPT engine: only whether it can be offered (never the key).
+        "cloud": {"configured": settings.cloud_configured, "llm_model": settings.chat_llm_model,
+                  "asr_model": settings.chat_asr_model, "tts_model": settings.chat_tts_model},
         "telegram": {"configured": settings.telegram_configured, "bot": settings.telegram_bot_username or None,
                      "running": telegram_bot.RUNTIME.running},
     }

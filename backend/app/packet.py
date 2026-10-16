@@ -280,7 +280,9 @@ def build(worker_id: str, date_from: str | None, date_to: str | None, *, redact_
         data = _gather(c, worker_id, date_from, date_to, redact_witness_names)
         media = _rows(c, "SELECT id, kind, speaker, audio_path, audio_sha256 FROM entries WHERE worker_id=? "
                          "AND status='confirmed' AND audio_path != ''", (worker_id,))
-        chain = [dict(r) for r in c.execute("SELECT * FROM events ORDER BY seq")]
+        # Only this worker's events: the hub's chain is shared, and other workers' events (hashes, GPS, ids)
+        # must never leave in someone else's packet. Each event keeps prev_hash, so each one still verifies.
+        chain = [dict(r) for r in c.execute("SELECT * FROM events WHERE worker_id=? ORDER BY seq", (worker_id,))]
 
     export_id = uuid.uuid4().hex[:12]
     out = settings.data_dir / "exports" / export_id
@@ -345,7 +347,9 @@ def build(worker_id: str, date_from: str | None, date_to: str | None, *, redact_
             "Apna Hisaab evidence file\n"
             + ("SYNTHETIC DEMO DATA\n" if settings.demo_mode else "")
             + f"Period {date_from} to {date_to}. manifest.json lists the SHA-256 of every file.\n"
-            "chain/events.jsonl is the append-only hash chain: hash = sha256(prev_hash + canonical event).\n"
+            "chain/events.jsonl holds this worker's events from the hub's append-only hash chain:\n"
+            "hash = sha256(prev_hash + canonical event). Other people's events are left out (gaps in seq);\n"
+            "the hub can show the full chain up to the chain head.\n"
             "Prepared from the worker's own records; computed by fixed rules; not legal advice; "
             "not verified by any authority.\n").encode("utf-8"))
 

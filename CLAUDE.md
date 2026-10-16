@@ -12,14 +12,14 @@ You are the coding agent for **Apna Hisaab**, a wage-theft evidence builder for 
 If the `wage-theft-evidence-builder` skill or any older doc says "no GPS", "fully offline" or "AI never messages the thekedar", **BUILD_PLAN.md overrides it** (decisions of 16 Oct).
 
 ## Hard rules (never break)
-1. **Open-weight AI only in the product.** Never call OpenAI, Gemini, Claude or any other closed AI API. The Telegram Bot API is a message transport, not AI, so it is allowed.
-2. **The LLM extracts and classifies; code computes.** No LLM arithmetic, legal reasoning or free text sent to anyone. Read-back and every message to the thekedar come from **fixed templates filled by code**.
+1. **Open-weight AI by default.** The only closed AI API allowed is the *optional* ChatGPT engine in `backend/app/cloud.py` (Akash's decision on 16 Oct). It is off unless `CHAT_API_KEY` is set and the worker picks "तेज़" in Settings, it always falls back to local, and it is disclosed in the README. Add no other closed API. The Telegram Bot API is a message transport, not AI, so it is allowed.
+2. **The LLM extracts and classifies; code computes.** No LLM arithmetic or legal reasoning. Read-back comes from **fixed templates filled by code**. Messages to the thekedar come from templates, with one exception: the Telegram agent (rule 6, `TG_AGENT=chatgpt`).
 3. **Never invent values.** Every extracted field is `{value, evidence}`, and `evidence` must be an exact transcript substring; otherwise the value is null. Only worker-confirmed values reach the wage engine.
 4. **Save and SHA-256-hash every original file (audio, photo) before any AI call.** Hash the original bytes, before transcoding.
 5. **Recording anyone other than the worker** (thekedar, co-worker) always starts with a notice that can't be skipped, records consent on the tape, and has an instant Stop. No covert recording.
 6. **The Telegram agent follows BUILD_PLAN §7 exactly:**
    - it introduces itself and says the chat is recorded;
-   - it replies only from templates;
+   - it replies only from templates, **unless `TG_AGENT=chatgpt`** (Akash's decision, 16 Oct): then the ChatGPT agent in `backend/app/tg_agent.py` writes the reply on the worker's behalf from code-computed ledger facts. Code checks every reply (no numbers outside the facts/chat, no law, no concessions or deals, no threats); a failed check or API error falls back to the template reply. The hostile guard still runs first and the agent never sees hostile messages;
    - it never negotiates, accepts a deal, threatens or cites law;
    - a hostile message means no reply plus an alert to the worker.
 7. **GPS is opt-in.** Ask permission, show the coordinates to the worker, and store them with the entry or photo.

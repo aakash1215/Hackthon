@@ -1,7 +1,7 @@
 // Settings & safety (UI/ F2, the parts P2 needs): chain check, upload queue, language, audio consent.
 // Not built yet: SMS record code, PIN, delete one/all (PIN is cut line §4 #7; deletes need the P3 tombstone UI).
 import { useEffect, useState } from 'react'
-import { Check, ChevronRight, CloudUpload, Languages, LogOut, MessageCircle, Mic, RefreshCw, ShieldCheck, CircleAlert, Users } from 'lucide-react'
+import { Check, ChevronRight, CloudUpload, Languages, LogOut, MessageCircle, Mic, RefreshCw, ShieldCheck, CircleAlert, Users, Zap } from 'lucide-react'
 import { Btn, Sheet, TopBar, useApp } from '../components/Ui.jsx'
 import * as api from '../lib/api.js'
 import { clearPhone } from '../lib/db.js'
@@ -13,8 +13,19 @@ export default function Settings() {
   const [unionSheet, setUnionSheet] = useState(false)
   const [unionDraft, setUnionDraft] = useState(profile.union_phone || '')
   const [logoutSheet, setLogoutSheet] = useState(false)
+  const [cloudOk, setCloudOk] = useState(null) // null = checking · true = the hub has CHAT_API_KEY set
+  const [engineSheet, setEngineSheet] = useState(false)
+  const [engineDraft, setEngineDraft] = useState('local')
   const check = () => { setChain(null); api.chainVerify().then(setChain).catch(() => setChain({ offline: true })) }
   useEffect(check, [])
+  useEffect(() => { api.health().then((h) => setCloudOk(!!h?.cloud?.configured)).catch(() => setCloudOk(false)) }, [])
+  const engine = profile.ai_engine === 'cloud' ? 'cloud' : 'local'
+
+  async function saveEngine() {
+    await setProfile({ ...profile, ai_engine: engineDraft })
+    setEngineSheet(false)
+    toast(engineDraft === 'cloud' ? 'तेज़ मोड चालू — ChatGPT API' : 'सस्ता मोड चालू — हब के अपने मॉडल')
+  }
 
   async function toggleConsent() {
     const p = { ...profile, consent_keep_audio: !profile.consent_keep_audio }
@@ -88,7 +99,45 @@ export default function Settings() {
           <span className="muted">{profile.consent_keep_audio ? 'हाँ' : 'नहीं'}</span>
           <ChevronRight size={22} color="var(--text-2)" />
         </button>
+        <button className="settings-row" onClick={() => { setEngineDraft(engine); setEngineSheet(true) }}>
+          <span className="icon-bubble"><Zap size={20} /></span>
+          <div className="grow"><div className="t">AI: तेज़ या सस्ता</div><div className="d">आवाज़ पढ़ना, हिसाब भरना, सुनाना</div></div>
+          <span className="muted">{engine === 'cloud' ? 'तेज़' : 'सस्ता'}</span>
+          <ChevronRight size={22} color="var(--text-2)" />
+        </button>
       </div>
+      <Sheet open={engineSheet} onClose={() => setEngineSheet(false)}>
+        <h2>AI कैसे चले?</h2>
+        <div className="stack" style={{ marginTop: 10 }}>
+          {[
+            { v: 'local', n: 'सस्ता · मुफ़्त', s: 'हब के अपने (open-weight) मॉडल · बिना इंटरनेट · थोड़ा धीमा' },
+            { v: 'cloud', n: 'तेज़ · ChatGPT API', off: cloudOk === false,
+              s: cloudOk === false ? 'अभी बंद · हब पर ChatGPT key (CHAT_API_KEY) नहीं मिली या हब नहीं मिला'
+                : 'जल्दी जवाब, साफ़ महिला आवाज़ · इंटरनेट चाहिए · हर बार पैसे लगते हैं' },
+          ].map((o) => {
+            const on = engineDraft === o.v
+            return (
+              <div key={o.v} className={`option ${on ? 'on' : ''}`} onClick={() => !o.off && setEngineDraft(o.v)} role="radio"
+                aria-checked={on} aria-disabled={!!o.off} style={o.off ? { opacity: 0.55 } : undefined}>
+                <div className="body">
+                  <div className="name">{o.n}</div>
+                  <div className="desc">{o.s}</div>
+                </div>
+                <span className={`radio ${on ? 'on' : ''}`}>{on && <Check size={13} strokeWidth={3} />}</span>
+              </div>
+            )
+          })}
+        </div>
+        {engineDraft === 'cloud' && (
+          <div className="info-row" style={{ marginTop: 12, background: 'var(--ask-bg)', color: 'var(--ask)' }}>
+            <CircleAlert size={20} /> आपकी आवाज़ और उसका लिखा हुआ हिसाब इंटरनेट से OpenAI (ChatGPT) के सर्वर पर जाएगा। मूल रिकॉर्डिंग पहले हब पर सेव और हैश होती है। ChatGPT न चले तो हब के अपने मॉडल अपने-आप काम करेंगे।
+          </div>
+        )}
+        <div className="btn-row" style={{ marginTop: 16 }}>
+          <Btn variant="plain" className="narrow" onClick={() => setEngineSheet(false)}>रद्द</Btn>
+          <Btn icon={Check} onClick={saveEngine}>सेव करें</Btn>
+        </div>
+      </Sheet>
       <Sheet open={unionSheet} onClose={() => setUnionSheet(false)}>
         <h2>यूनियन / सहायक का नंबर</h2>
         <div className="field" style={{ marginTop: 10 }}>

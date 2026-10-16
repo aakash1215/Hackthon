@@ -286,6 +286,8 @@ Shown as badges in the ledger and as a column in the packet, with the label *"Ho
 
 **Why:** a demo stand-in for WhatsApp, whose Business API is paid. The same flow ports to the WhatsApp Cloud API later. **Telegram needs internet**, so the agent pauses offline and resumes when the connection is back.
 
+**Change 16 Oct (Akash): ChatGPT agent mode, `TG_AGENT=chatgpt`.** Local inference was too slow for a live chat, so ChatGPT now writes the reply on the worker's behalf (`tg_agent.py`). It gets only code-computed facts (days, paid, balance *estimate*) and the last 8 chat messages. One call also returns the classification, which code grounds as usual, so promises still reach the inbox. Code checks each reply: ≤ 500 chars, no number outside the facts or chat, no law, police, court or union, no concessions or deals ("मंज़ूर", "समझौता", "settle"…), and no threats. If a check fails, the template reply from the table below is sent; if the API fails, the local classifier and templates run. The hostile guard runs first, so hostile messages get no reply and never reach ChatGPT. A bare `/start` with no invite gets the fixed `NEED_INVITE` template. `TG_AGENT=template` keeps the original template-only behaviour.
+
 **Runtime:**
 - `python-telegram-bot` 21.x, **long polling**, started in the FastAPI lifespan only if `TELEGRAM_BOT_TOKEN` is set;
 - no webhook, no public URL needed;

@@ -3,6 +3,7 @@
 import { apiForm, apiJson, ApiError, NetworkError } from './api.js'
 import { getJobs, getRecords, patchJob, pushJob, shiftJob, updateRecord } from './db.js'
 import { sha256Hex } from './hash.js'
+import { getEngine } from './engine.js'
 
 const listeners = new Set()
 let state = { online: navigator.onLine, hub: null, queued: 0, running: false }
@@ -37,7 +38,7 @@ export async function saveRecording({
   })
   await pushJob({
     type: 'entry', localId, kind, workerId, audio, photo: photo || null, gps: gps || null, clientTs, sha,
-    photoSha, speaker, noticePlayed, noticeLang, consentRefused,
+    photoSha, speaker, noticePlayed, noticeLang, consentRefused, engine: getEngine(),
   })
   await refreshCounts()
   flush()
@@ -79,6 +80,7 @@ async function runJob(job) {
     if (job.noticePlayed) f.append('notice_played', 'true')
     if (job.noticeLang) f.append('notice_lang', job.noticeLang)
     if (job.consentRefused) f.append('consent_refused', 'true')
+    if (job.engine === 'cloud') f.append('engine', 'cloud')
     if (job.photo) {
       f.append('photo', job.photo, 'photo.jpg')
       if (job.photoSha) f.append('photo_client_sha256', job.photoSha)

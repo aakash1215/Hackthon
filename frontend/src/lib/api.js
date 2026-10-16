@@ -114,6 +114,7 @@ export const exportPacket = (body) => apiJson('POST', '/api/export', body, { tim
 export const telegramStatus = (workerId) => apiJson('GET', `/api/telegram/status?${q(workerId)}`, null, { timeoutMs: 8000 })
 export const telegramInvite = (workerId) => apiJson('POST', '/api/telegram/invite', { worker_id: workerId })
 export const telegramSettings = (workerId, patch) => apiJson('POST', '/api/telegram/settings', { worker_id: workerId, ...patch })
+export const agentAsk = (body) => apiJson('POST', '/api/agent/ask', body, { timeoutMs: 60000 })
 export const telegramSend = (workerId, template) => apiJson('POST', '/api/telegram/send', { worker_id: workerId, template })
 export const telegramMessages = (workerId) => apiJson('GET', `/api/telegram/messages?${q(workerId)}`, null, { timeoutMs: 8000 })
 export const inbox = (workerId) => apiJson('GET', `/api/inbox?${q(workerId)}`, null, { timeoutMs: 8000 })

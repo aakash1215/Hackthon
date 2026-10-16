@@ -41,9 +41,20 @@ class Settings:
     asr_beam_size: int  # 1 is fastest on the CPU tier
     # Optional services
     tts_enabled: bool
+    # Optional closed cloud engine (ChatGPT API). Used only when CHAT_API_KEY is set AND the worker picks it
+    # in Settings. Local open-weight models stay the default; any cloud failure falls back to them.
+    chat_api_key: str
+    chat_base_url: str
+    chat_llm_model: str
+    chat_asr_model: str
+    chat_tts_model: str
+    chat_tts_voice: str
     telegram_bot_token: str
     telegram_bot_username: str
     telegram_proxy: str  # optional http(s)/socks proxy when the network blocks api.telegram.org
+    # "template" (default): replies only from fixed templates · "chatgpt": the ChatGPT agent writes replies
+    # for the worker, checked by code (tg_agent.py); any failure falls back to the template reply.
+    tg_agent: str
     demo_mode: bool
     # Storage and server
     data_dir: Path
@@ -64,6 +75,10 @@ class Settings:
         return str(p) if p.exists() else self.asr_model
 
     @property
+    def cloud_configured(self) -> bool:
+        return bool(self.chat_api_key)
+
+    @property
     def telegram_configured(self) -> bool:
         return bool(self.telegram_bot_token)
 
@@ -79,9 +94,16 @@ def load_settings() -> Settings:
         asr_compute_type=os.getenv("ASR_COMPUTE_TYPE", "int8"),
         asr_beam_size=int(os.getenv("ASR_BEAM_SIZE", "1")),
         tts_enabled=_bool("TTS_ENABLED", False),
+        chat_api_key=os.getenv("CHAT_API_KEY", "").strip(),
+        chat_base_url=os.getenv("CHAT_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
+        chat_llm_model=os.getenv("CHAT_LLM_MODEL", "gpt-5.4-mini"),
+        chat_asr_model=os.getenv("CHAT_ASR_MODEL", "whisper-1"),
+        chat_tts_model=os.getenv("CHAT_TTS_MODEL", "gpt-4o-mini-tts"),
+        chat_tts_voice=os.getenv("CHAT_TTS_VOICE", "coral"),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", "").strip(),
         telegram_bot_username=os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@"),
         telegram_proxy=os.getenv("TELEGRAM_PROXY", "").strip(),
+        tg_agent=os.getenv("TG_AGENT", "template").strip().lower(),
         demo_mode=_bool("DEMO_MODE", True),
         data_dir=_path(os.getenv("DATA_DIR", "data")),
         host=os.getenv("HOST", "0.0.0.0"),

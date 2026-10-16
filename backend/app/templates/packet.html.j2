@@ -208,7 +208,7 @@ main > * { position: relative; z-index: 1; }
 
 <!-- 8. Evidence index -->
 <h2>8. साक्ष्य सूची <span class="en">/ Evidence index</span></h2>
-<p class="small">Every file is listed with its SHA-256 in <b>manifest.json</b> inside bundle.zip; the original audio and photos are included byte-for-byte (co-worker audio excluded by default). Times marked "device time" come from the phone clock. The hash chain (chain/events.jsonl) links every event: hash = SHA-256(previous hash + event). Chain head: <span class="mono">{{ chain_head.hash or '—' }}</span>.</p>
+<p class="small">Every file is listed with its SHA-256 in <b>manifest.json</b> inside bundle.zip; the original audio and photos are included byte-for-byte (co-worker audio excluded by default). Times marked "device time" come from the phone clock. chain/events.jsonl holds this worker's events from the hub's hash chain (hash = SHA-256(previous hash + event)); other people's events are left out. Chain head: <span class="mono">{{ chain_head.hash or '—' }}</span>.</p>
 <p class="small">Inputs for a certificate under BSA 2023 s.63(4), Part A: device = the worker's Android phone (browser PWA) and a local hub laptop running Apna Hisaab (open-source, Apache-2.0); open-weight models (faster-whisper ASR, Qwen3 LLM via llama.cpp) only extract text and fields; all amounts are computed by deterministic code.</p>
 
 <!-- 9. Parties, where to go -->

@@ -25,7 +25,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from . import asr, db, events, extract
+from . import asr, cloud, db, events, extract, tg_agent
 from .config import settings
 from .tg_policy import DAILY_LIMIT, LANGS, decide, hostile_guard, render
 
@@ -171,7 +171,11 @@ def _queue(c, link: dict, template_id: str, vals: dict, *, force: bool = False) 
         raise OutboxError("PAUSED")
     if _sent_today(c, link["chat_id"]) >= DAILY_LIMIT and not force:
         raise OutboxError("DAILY_LIMIT", link, template_id)
-    text = render(template_id, link.get("lang") or "hi", **vals)
+    return _queue_text(c, link, render(template_id, link.get("lang") or "hi", **vals), template_id)
+
+
+def _queue_text(c, link: dict, text: str, template_id: str) -> dict:
+    """Put a checked text in the outbox (fixed template, or an AGENT reply that passed tg_agent.check_reply)."""
     rid = uuid.uuid4().hex[:12]
     c.execute("INSERT INTO tg_messages (id, worker_id, chat_id, direction, text, template_id, created_at, status) "
               "VALUES (?,?,?, 'out', ?,?,?, 'pending')", (rid, link["worker_id"], link["chat_id"], text, template_id, _now()))
@@ -342,9 +346,24 @@ def classify_and_act(row_id: str) -> dict:
     reply = {"intent": None, "confidence": None, "amount": {"value": None}, "date": {"value": None},
              "days": {"value": None}}
     llm_error = None
+    agent = None  # {"reply", "rejected"} when the ChatGPT agent ran (TG_AGENT=chatgpt)
     if guard:
         reply.update(intent="hostile", confidence="high")
-    elif text.strip():
+    elif text.strip() and tg_agent.enabled() and link and not link.get("paused"):
+        try:
+            lang = link.get("lang") or "hi"
+            vals = summary_vals(m["worker_id"], lang)
+            with db.read() as c:
+                _, site, thekedar = _names(c, m["worker_id"])
+                hist = tg_agent.history_rows(c, m["chat_id"], row_id)
+            res = tg_agent.respond(vals, thekedar, site, lang, hist, text)
+            reply = _ground_reply(res["raw"], text)
+            agent = {"reply": res["reply"], "rejected": res["rejected"]}
+        except cloud.CloudUnavailable as e:
+            log.warning("telegram agent unavailable (%s); using templates", e)
+            agent = {"reply": None, "rejected": f"CLOUD:{e}"}
+    cloud_failed = agent is not None and (agent["rejected"] or "").startswith("CLOUD:")
+    if not guard and text.strip() and (agent is None or cloud_failed):
         try:
             reply = _ground_reply(extract.extract_reply(text, timeout=120), text)
         except extract.LLMUnavailable as e:
@@ -356,6 +375,10 @@ def classify_and_act(row_id: str) -> dict:
     classification = {"intent": reply["intent"], "confidence": reply["confidence"], "amount": amount,
                       "date_text": date_text, "days": days, "guard": guard, "llm_error": llm_error,
                       "decision": {"template_id": d.template_id, "inbox": d.inbox_kind, "pause": d.pause}}
+    # The agent's checked reply replaces the template reply; never for hostile messages or a paused chat.
+    agent_text = agent["reply"] if agent and not d.pause and reply["intent"] != "hostile" else None
+    if agent:
+        classification["agent"] = {"used": bool(agent_text), "rejected": agent["rejected"]}
     out = refused = None
     with db.write() as c:
         c.execute("UPDATE tg_messages SET transcript=?, classification=? WHERE id=?",
@@ -370,7 +393,13 @@ def classify_and_act(row_id: str) -> dict:
                       "date_text, days, tg_date, message_sha256, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                       (uuid.uuid4().hex[:12], wid, row_id, d.inbox_kind, text, reply["intent"], reply["confidence"],
                        amount, date_text, days, m["tg_date"], m["sha256"], _now()))
-        if d.template_id:
+        if agent_text:
+            try:
+                out = _queue_text(c, link, agent_text, "AGENT")
+            except OutboxError as e:
+                classification["not_sent"] = e.code
+                refused = e
+        elif d.template_id:
             worker, _, _ = _names(c, wid)
             vals = {"worker": worker, "amount": inr(amount) if amount is not None else None, "date": date_text}
             if d.template_id == "NOTED_DISPUTE":
@@ -384,7 +413,7 @@ def classify_and_act(row_id: str) -> dict:
                 classification["not_sent"] = e.code
                 refused = e
     # templates that need ledger/engine numbers are built outside the write lock
-    if d.template_id in ("SUMMARY", "NOTED_DISPUTE"):
+    if not agent_text and d.template_id in ("SUMMARY", "NOTED_DISPUTE"):
         lang = link.get("lang") or "hi"
         vals = summary_vals(m["worker_id"], lang) if d.template_id == "SUMMARY" else None
         if d.template_id == "NOTED_DISPUTE":
@@ -450,7 +479,12 @@ class Runtime:
     async def _start_app(self) -> None:
         from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
-        builder = Application.builder().token(settings.telegram_bot_token)
+        # The library's 5 s defaults drop the bot "offline" on a slow or shared link (one slow getMe/getUpdates
+        # → full shutdown + 30 s wait). Generous timeouts keep it polling; real outages still pause it.
+        builder = (Application.builder().token(settings.telegram_bot_token)
+                   .connect_timeout(20).read_timeout(30).write_timeout(30).pool_timeout(20)
+                   .get_updates_connect_timeout(20).get_updates_read_timeout(40)
+                   .get_updates_write_timeout(30).get_updates_pool_timeout(20))
         if settings.telegram_proxy:
             builder = builder.proxy(settings.telegram_proxy).get_updates_proxy(settings.telegram_proxy)
         app = builder.build()
@@ -459,7 +493,7 @@ class Runtime:
         app.add_handler(MessageHandler((filters.TEXT & ~filters.COMMAND) | filters.VOICE, self._on_message))
         await app.initialize()
         await app.start()
-        await app.updater.start_polling(allowed_updates=["message", "callback_query"])
+        await app.updater.start_polling(allowed_updates=["message", "callback_query"], timeout=20)
         self.app, self.running, self.last_error = app, True, None
         log.info("telegram bot polling as @%s", settings.telegram_bot_username)
 
@@ -496,11 +530,12 @@ class Runtime:
     async def _on_start(self, update, context) -> None:
         msg = update.effective_message
         token = context.args[0] if context.args else None
-        if not token:
-            return  # no invite: the bot stays silent
-        link = start_link(token, msg.chat_id, update.effective_user.id if update.effective_user else None,
-                          update.effective_user.username if update.effective_user else None)
+        link = token and start_link(token, msg.chat_id, update.effective_user.id if update.effective_user else None,
+                                    update.effective_user.username if update.effective_user else None)
         if not link:
+            # No or unknown invite: one fixed template (who we are, chat is recorded, open the worker's link).
+            # Not tied to any worker, so nothing is queued or stored.
+            await msg.reply_text(render("NEED_INVITE", "hi"))
             return
         with db.write() as c:
             worker, _, _ = _names(c, link["worker_id"])

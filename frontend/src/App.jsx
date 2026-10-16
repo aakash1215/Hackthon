@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppCtx } from './components/Ui.jsx'
-import { getProfile, saveProfile } from './lib/db.js'
+import { clearPhone, getJobs, getProfile, saveProfile } from './lib/db.js'
+import { apiJson } from './lib/api.js'
 import { startSync, subscribe } from './lib/sync.js'
 import { loadDemoFromUrl } from './lib/demo.js'
 import Onboarding from './screens/Onboarding.jsx'
@@ -19,9 +20,23 @@ import Diff from './screens/Diff.jsx'
 import Telegram from './screens/Telegram.jsx'
 import PromiseScreen from './screens/Promise.jsx'
 import Stopped from './screens/Stopped.jsx'
+import Agent from './screens/Agent.jsx'
+import { setEngine } from './lib/engine.js'
 
 const SCREENS = { home: Home, record: Record, saved: Saved, confirm: Confirm, ledger: Ledger, hisaab: Hisaab, file: FileTab, settings: Settings, later: Later,
-  hisaabCheck: HisaabCheck, recordOther: RecordOther, diff: Diff, telegram: Telegram, promise: PromiseScreen, stopped: Stopped }
+  hisaabCheck: HisaabCheck, recordOther: RecordOther, diff: Diff, telegram: Telegram, promise: PromiseScreen, stopped: Stopped, agent: Agent }
+
+// The account was removed on the hub (reset / deleted): log this phone out instead of failing every call.
+// Not while the phone still has queued uploads: an offline sign-up reaches the hub only when those run.
+async function checkAccount(p) {
+  try {
+    await apiJson('GET', `/api/workers/${encodeURIComponent(p.worker_id)}`, null, { timeoutMs: 8000 })
+  } catch (e) {
+    if (e.code !== 'WORKER_NOT_FOUND' || (await getJobs()).length) return
+    await clearPhone()
+    window.location.replace('/')
+  }
+}
 
 export default function App() {
   const [profile, setProfileState] = useState(undefined) // undefined = loading
@@ -32,7 +47,8 @@ export default function App() {
   useEffect(() => {
     // ?demo=<worker_id> loads the seeded demo persona first (P6); a failure leaves the phone as it was.
     loadDemoFromUrl().catch(() => false).finally(() => {
-      getProfile().then((p) => setProfileState(p || null)).catch(() => setProfileState(null))
+      getProfile().then((p) => { setEngine(p?.ai_engine); setProfileState(p || null); if (p) checkAccount(p) })
+        .catch(() => setProfileState(null))
       startSync()
     })
     return subscribe(setSync)
@@ -45,6 +61,7 @@ export default function App() {
 
   const setProfile = useCallback(async (p) => {
     await saveProfile(p)
+    setEngine(p?.ai_engine)
     setProfileState(p)
   }, [])
 

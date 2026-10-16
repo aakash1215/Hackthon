@@ -73,6 +73,11 @@ _ABS = {key("डेढ़"): 1.5, key("डेढ"): 1.5, key("दीड"): 1.5, 
 _TIME_WORDS = {key(w) for w in ("बजे", "बजकर", "वाजता", "वाजले", "वाजून", "वाजत")}
 _CONNECT = {key(w) for w in ("से", "ते", "पासून")}
 _DAY_WORD = {key(w) for w in ("तारीख", "तारखेला", "तारखेस")}
+# Relative days, in Devanagari and in the Latin spellings ASR writes for code-mixed speech ("aaj ke din", "today").
+_TODAY = {key(w) for w in ("आज", "आजच", "आजचा", "आजची", "आजचे", "टुडे", "aaj", "aj", "aaja", "aajach", "today")}
+_YESTERDAY = {key(w) for w in ("काल", "यस्टरडे", "yesterday")}  # Marathi 'काल' = yesterday
+_KAL = {key(w) for w in ("कल", "kal", "kaal", "kall")}  # Hindi 'कल' = yesterday or tomorrow
+_PARSO = {key(w) for w in ("परसों", "परवा", "parso", "parson", "parsoan", "parva")}
 
 
 @dataclass(frozen=True)
@@ -267,13 +272,13 @@ def _dates(text: str, rec: date) -> list[dict]:
     toks = _tokens(text)
     out: list[dict] = []
     for idx, t in enumerate(toks):
-        if t.k == key("आज"):
+        if t.k in _TODAY:
             out.append({"value": rec.isoformat(), "status": "stated", "span": t.text})
-        elif t.k == key("काल"):  # Marathi 'काल' = yesterday
+        elif t.k in _YESTERDAY:
             out.append({"value": (rec - timedelta(days=1)).isoformat(), "status": "stated", "span": t.text})
-        elif t.k == key("कल"):  # Hindi 'कल' = yesterday or tomorrow
+        elif t.k in _KAL:
             out.append({"value": (rec - timedelta(days=1)).isoformat(), "status": "ambiguous", "span": t.text})
-        elif t.k in (key("परसों"), key("परवा")):
+        elif t.k in _PARSO:
             out.append({"value": (rec - timedelta(days=2)).isoformat(), "status": "ambiguous", "span": t.text})
         elif t.k in _DAY_WORD and idx >= 1:
             n = _num(toks[idx - 1].k)

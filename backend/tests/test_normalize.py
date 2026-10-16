@@ -60,6 +60,16 @@ def test_dates():
     assert _t("परसों पैसे")["work_date"]["status"] == "ambiguous"
 
 
+def test_today_in_latin_and_english_resolves_to_recording_date():
+    assert _t("aaj ke din 9 se 7 kaam kiya")["work_date"] == {"value": "2026-10-16", "status": "stated", "span": "aaj"}
+    assert _t("Today सुबह नौ बजे")["work_date"] == {"value": "2026-10-16", "status": "stated", "span": "Today"}
+    assert _t("आज के दिन काम किया")["work_date"]["value"] == "2026-10-16"
+    assert _t("आजच कामावर गेलो")["work_date"]["value"] == "2026-10-16"
+    assert _t("yesterday kaam kiya")["work_date"] == {"value": "2026-10-15", "status": "stated", "span": "yesterday"}
+    assert _t("kal kaam kiya")["work_date"]["status"] == "ambiguous"
+    assert parse_date("aaj", REC) == parse_date("today", REC) == "2026-10-16"
+
+
 def test_nth_of_month_most_recent_past():
     assert _t("13 तारीख को काम")["work_date"] == {"value": "2026-10-13", "status": "inferred", "span": "13 तारीख"}
     assert normalize("13 तारीख", date(2026, 10, 10))["work_date"]["value"] == "2026-09-13"

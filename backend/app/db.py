@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS inbox (
 # Columns added after P2. CREATE TABLE IF NOT EXISTS does not touch an existing table, so an older
 # data/apna.db gets them with ALTER TABLE (additive only; nothing is dropped or rewritten).
 _ADDED_COLUMNS = {
-    "entries": {"notice_lang": "TEXT", "reply": "TEXT"},
+    "entries": {"notice_lang": "TEXT", "reply": "TEXT", "engine": "TEXT"},
     "evidence": {"client_sha256": "TEXT", "hash_match": "INTEGER"},
     "tg_messages": {"status": "TEXT NOT NULL DEFAULT 'received'"},
 }

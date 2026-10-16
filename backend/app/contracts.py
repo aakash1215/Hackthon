@@ -186,7 +186,7 @@ SYSTEM_PROMPT = (
     "Every value must quote the transcript in `evidence`, copied exactly from it. "
     "If a fact is not said, use null for both value and evidence. "
     "Do not compute totals, durations or unit conversions. "
-    "Do not resolve relative dates; return the words as spoken (for example 'कल'). "
+    "Do not resolve relative dates; return the words as spoken (for example 'कल', 'आज', 'aaj', 'today'); code turns them into a date. "
     "The recording date and the worker's defaults are context, not facts: "
     "do not copy them into a value unless the transcript says it. "
     "Output only JSON that matches the schema."

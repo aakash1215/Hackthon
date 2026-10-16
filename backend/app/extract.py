@@ -6,15 +6,18 @@ reconcile.py, which checks grounding and compares it with the normalizer.
 from __future__ import annotations
 
 import json
+import logging
 
 import httpx
 
+from . import cloud
 from .config import settings
 from .contracts import (
     FEW_SHOT, KIND_FIELDS, REPLY_FEW_SHOT, REPLY_INTENTS, REPLY_SYSTEM_PROMPT, SYSTEM_PROMPT, json_schema_for,
 )
 
 _FEW_SHOT_DATE = "2026-10-16"
+log = logging.getLogger("apna_hisaab.extract")
 
 
 class LLMUnavailable(Exception):
@@ -38,14 +41,15 @@ def build_messages(kind: str, transcript: str, rec_date: str, context: dict | No
     return msgs
 
 
-def extract(kind: str, transcript: str, rec_date: str, context: dict | None = None, timeout: float = 300) -> dict:
+def extract(kind: str, transcript: str, rec_date: str, context: dict | None = None, timeout: float = 300,
+            engine: str | None = None) -> dict:
     """Return {field: {value, evidence}} for every field of `kind`. Raises LLMUnavailable."""
     if kind not in KIND_FIELDS:
         raise ValueError(f"unknown kind {kind}")
-    return _call(kind, build_messages(kind, transcript, rec_date, context), timeout)
+    return _call(kind, build_messages(kind, transcript, rec_date, context), timeout, engine)
 
 
-def extract_reply(transcript: str, timeout: float = 300) -> dict:
+def extract_reply(transcript: str, timeout: float = 300, engine: str | None = None) -> dict:
     """thekedar_reply schema: {intent, confidence, amount, date, days}. Raises LLMUnavailable.
 
     The intent is a classification only; any reply text is chosen by code from fixed templates.
@@ -55,20 +59,26 @@ def extract_reply(transcript: str, timeout: float = 300) -> dict:
         msgs.append({"role": "user", "content": "Transcript:\n" + text})
         msgs.append({"role": "assistant", "content": json.dumps(out, ensure_ascii=False)})
     msgs.append({"role": "user", "content": "Transcript:\n" + transcript})
-    out = _call("thekedar_reply", msgs, timeout)
+    out = _call("thekedar_reply", msgs, timeout, engine)
     if out.get("intent") not in REPLY_INTENTS:
         out["intent"], out["confidence"] = "other", "low"
     return out
 
 
-def _call(name: str, messages: list[dict], timeout: float) -> dict:
+def _call(name: str, messages: list[dict], timeout: float, engine: str | None = None, schema: dict | None = None) -> dict:
+    schema = schema or json_schema_for(name)
+    if cloud.wanted(engine):  # optional ChatGPT API: same schema, same grounding checks in reconcile.py
+        try:
+            return cloud.chat_json(name, messages, schema, timeout)
+        except cloud.CloudUnavailable as e:
+            log.warning("cloud LLM failed (%s); using local LLM", e)
     body = {
         "model": settings.llm_model,
         "temperature": 0,
         "messages": messages,
         "response_format": {
             "type": "json_schema",
-            "json_schema": {"name": name, "schema": json_schema_for(name)},
+            "json_schema": {"name": name, "schema": schema},
         },
         "chat_template_kwargs": {"enable_thinking": False},
     }
@@ -85,3 +95,8 @@ def _call(name: str, messages: list[dict], timeout: float) -> dict:
     if not isinstance(out, dict):
         raise LLMUnavailable("LLM_BAD_JSON")
     return out
+
+
+def classify(name: str, messages: list[dict], schema: dict, timeout: float = 45, engine: str | None = None) -> dict:
+    """Generic closed-schema classification (e.g. the worker's question intent). Raises LLMUnavailable."""
+    return _call(name, messages, timeout, engine, schema)

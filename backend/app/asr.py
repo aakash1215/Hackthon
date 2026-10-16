@@ -5,13 +5,18 @@ The original bytes are hashed and saved before this module is called. Here we on
 """
 from __future__ import annotations
 
+import logging
+import os
 import subprocess
 import threading
 from pathlib import Path
 
 import httpx
 
-from .config import settings
+from . import cloud
+from .config import REPO_ROOT, settings
+
+log = logging.getLogger("apna_hisaab.asr")
 
 
 class ASRUnavailable(Exception):
@@ -22,16 +27,42 @@ _model = None
 _model_lock = threading.Lock()
 
 
+def _cuda_dll_dirs() -> None:
+    """Windows: the nvidia-cublas-cu12 / nvidia-cudnn-cu12 wheels keep their DLLs in site-packages/nvidia/*/bin,
+    which CTranslate2 does not search. Put them on the DLL path before the model loads."""
+    if os.name != "nt":
+        return
+    import importlib.util
+
+    spec = importlib.util.find_spec("nvidia")
+    dirs = [b for base in ((spec.submodule_search_locations or []) if spec else []) for b in Path(base).glob("*/bin")]
+    # llama.cpp's CUDA build ships cuBLAS 12 (cudart-llama-bin zip); reuse it instead of a second 400 MB copy.
+    llama_cuda = REPO_ROOT / "models" / "llama.cpp" / "cuda"
+    if llama_cuda.is_dir():
+        dirs.append(llama_cuda)
+    for b in dirs:
+        os.add_dll_directory(str(b))
+        os.environ["PATH"] = f"{b}{os.pathsep}{os.environ.get('PATH', '')}"
+
+
 def _load():
     global _model
     with _model_lock:
         if _model is None:
             from faster_whisper import WhisperModel  # heavy import, kept lazy so the app starts fast
 
+            if settings.asr_device == "cuda":
+                _cuda_dll_dirs()
+                try:
+                    _model = WhisperModel(settings.asr_model_path, device="cuda",
+                                          compute_type=settings.asr_compute_type)
+                    return _model
+                except Exception as e:  # noqa: BLE001 — no CUDA libs / VRAM: degrade to CPU, don't crash
+                    log.warning("ASR on CUDA failed (%s: %s); falling back to CPU int8", type(e).__name__, e)
             _model = WhisperModel(
                 settings.asr_model_path,
-                device=settings.asr_device,
-                compute_type=settings.asr_compute_type,
+                device="cpu",
+                compute_type=settings.asr_compute_type if settings.asr_device == "cpu" else "int8",
             )
     return _model
 
@@ -48,11 +79,21 @@ def to_wav16k(src: Path, dst: Path) -> Path:
     return dst
 
 
-def transcribe_wav(wav: Path, language: str) -> dict:
+def transcribe_wav(wav: Path, language: str, engine: str | None = None) -> dict:
     """language: 'hi' | 'mr' forces the language; 'auto' lets Whisper detect it (thekedar recordings).
+    engine: 'cloud' tries the optional ChatGPT API first (when configured), then falls back to local.
 
-    Returns {language, duration, text, segments:[{start,end,text,avg_logprob,no_speech_prob,words}]}.
+    Returns {language, duration, text, segments:[{start,end,text,avg_logprob,no_speech_prob,words}], engine}.
     """
+    if cloud.wanted(engine):
+        try:
+            return cloud.transcribe(wav, language)
+        except cloud.CloudUnavailable as e:
+            log.warning("cloud ASR failed (%s); using local ASR", e)
+    return {"engine": f"local:{settings.asr_model}", **_transcribe_local(wav, language)}
+
+
+def _transcribe_local(wav: Path, language: str) -> dict:
     if settings.asr_mode == "remote":
         if not settings.asr_url:
             raise ASRUnavailable("ASR_URL_NOT_SET")

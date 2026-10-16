@@ -65,7 +65,8 @@ def directory():
     with db.write() as c:  # write(): creates worker_pins on first use
         c.execute(_TABLE)
         rows = c.execute("SELECT w.id, w.display_name, w.created_at, p.worker_id IS NOT NULL AS has_pin FROM workers w "
-                         "LEFT JOIN worker_pins p ON p.worker_id = w.id ORDER BY w.created_at DESC LIMIT 12").fetchall()
+                         "LEFT JOIN worker_pins p ON p.worker_id = w.id WHERE trim(coalesce(w.display_name, '')) != '' "
+                         "ORDER BY w.created_at DESC LIMIT 12").fetchall()  # sign-up requires a name; hide unnamed legacy rows
     return {"items": [{"id": r["id"], "display_name": r["display_name"] or "बिना नाम", "has_pin": bool(r["has_pin"]),
                        "initial": (r["display_name"] or "?").strip()[:1]} for r in rows]}
 

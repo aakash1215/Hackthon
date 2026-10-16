@@ -12,7 +12,10 @@ The output is a bilingual, hash-indexed **evidence file** a paralegal or union c
 
 > *"We don't replace the employer's record — we fill the gap his missing record leaves. No internet never means no record."*
 
-**No closed AI API is used in the product.** All AI runs on open-weight models on the hub (or the phone).
+**By default no closed AI API is used.** All AI runs on open-weight models on the hub (or the phone). An
+*optional* "तेज़" (fast) mode can send ASR, extraction and read-back to the ChatGPT API instead. It is off unless
+`CHAT_API_KEY` is set **and** the worker turns it on in Settings, and it falls back to the local models on any
+error (see [Optional cloud engine](#optional-cloud-engine-disclosed)).
 The LLM only *extracts and classifies*; every number is computed by code, and every message to the thekedar
 is a fixed template filled by code.
 
@@ -205,10 +208,28 @@ Problem research and the strategy report (`planning/PS07_Strategy_Report.md`), t
 and tests F1–F9, the UI designs (`UI/`), and the model download list were prepared before build day. Everything
 else was built on build day (16 Oct 2026). The commit history shows the phases P0–P6.
 
+## Optional cloud engine (disclosed)
+
+Settings → "AI: तेज़ या सस्ता" lets a worker choose **सस्ता** (default: the open-weight models above, free,
+offline) or **तेज़** (the closed ChatGPT API: faster, costs money, needs internet). The toggle appears only when
+the hub's `.env` has `CHAT_API_KEY`. Before the worker turns it on, the app says that their voice and transcript
+will go to OpenAI's servers. In तेज़ mode:
+
+| Role | Model (`.env`) | Fallback on any error |
+|---|---|---|
+| Extraction | `CHAT_LLM_MODEL` (default `gpt-5.4-mini`) | local Qwen3 via llama-server |
+| ASR | `CHAT_ASR_MODEL` (default `whisper-1`) | local faster-whisper |
+| Read-back voice | `CHAT_TTS_MODEL` / `CHAT_TTS_VOICE` (default `gpt-4o-mini-tts` / `coral`, female) | the phone's own voice |
+
+The rules don't change. The original audio is saved and SHA-256-hashed before any call. The LLM gets the same
+JSON schema and few-shot prompt, and every evidence span is still checked against the transcript. Code does
+every calculation, and Telegram replies stay template-only (Telegram classification always uses the local
+model). Each entry records which engine it asked for, and which ASR engine actually ran, in the event chain.
+
 ## AI-assisted development (disclosure)
 
-The code was written with **Claude Code** (Anthropic) as a coding assistant. **No closed AI model or API is
-used by the product at runtime.** The product uses only the open-weight models above. The Telegram Bot API is a
+The code was written with **Claude Code** (Anthropic) as a coding assistant. By default the product uses only
+the open-weight models above at runtime; the optional cloud engine is described in the section above. The Telegram Bot API is a
 message transport, not AI.
 
 ## License

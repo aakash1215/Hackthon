@@ -14,10 +14,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
 
-from . import asr, corroboration, db, events, extract, normalize, processing, reconcile
+from . import asr, cloud, corroboration, db, events, extract, normalize, processing, reconcile
 from .config import settings
 from .contracts import (
     DATE_FIELDS, ENTRY_KINDS, ENUM_FIELDS, INT_FIELDS, KIND_FIELDS, MONEY_FIELDS, REPLY_INTENTS, SPAN_INT_FIELDS,
@@ -260,6 +260,7 @@ def create_entry(
     notice_lang: str | None = Form(None),
     photo_client_sha256: str | None = Form(None),
     consent_refused: bool = Form(False),
+    engine: str = Form("local"),
 ):
     """Save and hash the original bytes first, then return. No model runs here.
 
@@ -317,13 +318,13 @@ def create_entry(
         c.execute(
             "INSERT INTO entries (id, worker_id, site_id, kind, speaker, language, audio_path, audio_sha256, "
             "client_sha256, hash_match, client_ts, server_ts, lat, lon, gps_accuracy_m, gps_ts, status, "
-            "notice_played, notice_lang, error) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'saved', ?, ?, ?)",
+            "notice_played, notice_lang, error, engine) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'saved', ?, ?, ?, ?)",
             (entry_id, worker_id, site["id"] if site else None, kind, speaker, lang,
              audio_rel.as_posix(), audio_sha, client_sha256, None if hash_match is None else int(hash_match),
              client_ts, server_ts, lat if gps_saved else None, lon if gps_saved else None,
              gps_accuracy_m if gps_saved else None, gps_ts if gps_saved else None,
              int(bool(notice_played)), notice_lang if notice_played else None,
-             "CONSENT_REFUSED" if consent_refused else None),
+             "CONSENT_REFUSED" if consent_refused else None, "cloud" if engine == "cloud" else "local"),
         )
         events.append(c, "AUDIO_SAVED", {"entry_id": entry_id, "audio_sha256": audio_sha, "bytes": len(data),
                                          "client_sha256": client_sha256, "hash_match": hash_match,
@@ -417,10 +418,12 @@ def process_entry(entry_id: str):
         raise HTTPException(409, "NO_AUDIO")
     original = settings.data_dir / e["audio_path"]
     wav = original.parent / "16k.wav"
+    # Optional ChatGPT engine, picked on the phone at recording time; it falls back to local on any failure.
+    eng = {"engine": "cloud"} if e.get("engine") == "cloud" else {}
     try:
         if not wav.exists():
             asr.to_wav16k(original, wav)
-        asr_res = asr.transcribe_wav(wav, e["language"])
+        asr_res = asr.transcribe_wav(wav, e["language"], **eng)
     except asr.ASRUnavailable as ex:
         return {"entry_id": entry_id, "status": e["status"], "error": ex.args[0].split(":")[0],
                 "detail": str(ex), "fields": None}
@@ -440,7 +443,7 @@ def process_entry(entry_id: str):
     llm = None
     if transcript.strip():  # nothing said → nothing to extract; skip the slow LLM call
         try:
-            llm = extract.extract(e["kind"], transcript, rec.isoformat(), context or None)
+            llm = extract.extract(e["kind"], transcript, rec.isoformat(), context or None, **eng)
         except extract.LLMUnavailable as ex:
             llm_error = ex.args[0]
 
@@ -448,7 +451,7 @@ def process_entry(entry_id: str):
     reply = None
     if e["speaker"] == "thekedar" and transcript.strip() and not llm_error:
         try:
-            reply = _ground_reply(extract.extract_reply(transcript), transcript)
+            reply = _ground_reply(extract.extract_reply(transcript, **eng), transcript)
         except extract.LLMUnavailable:
             reply = None  # the statement numbers still stand; the worker picks the intent
     new_status = "saved" if llm_error else "processed"
@@ -458,14 +461,16 @@ def process_entry(entry_id: str):
             "WHERE id=?",
             (new_status, transcript,
              json.dumps({"language": asr_res["language"], "duration": asr_res["duration"],
-                         "segments": [{k: v for k, v in s.items() if k != "words"} for s in segments]},
+                         "engine": asr_res.get("engine"), "segments": [{k: v for k, v in s.items() if k != "words"} for s in segments]},
                         ensure_ascii=False),
              json.dumps(llm, ensure_ascii=False) if llm is not None else None,
              json.dumps(rec_out, ensure_ascii=False), llm_error,
              json.dumps(reply, ensure_ascii=False) if reply else None, entry_id),
         )
         events.append(c, "ENTRY_PROCESSED", {"entry_id": entry_id, "transcript_sha256": _sha(transcript.encode()),
-                                             "llm_error": llm_error, "tier": "server"}, e["worker_id"])
+                                             "llm_error": llm_error, "tier": "server",
+                                             "engine": e.get("engine") or "local", "asr_engine": asr_res.get("engine")},
+                      e["worker_id"])
     return {
         "entry_id": entry_id,
         "status": new_status,
@@ -785,3 +790,74 @@ def internal_asr(audio: UploadFile = File(...), language: str = Form("auto")):
         return asr.transcribe_wav(wav, language)
     except asr.ASRUnavailable as ex:
         raise HTTPException(503, str(ex)) from ex
+
+
+# --- voice typing for short form fields (sign-up name, site, thekedar) -------------------------------
+# Local Whisper only, no LLM. The original bytes are hashed and saved before ASR (rule 4). The text only
+# pre-fills an editable field; the worker sees it and corrects it before anything is stored.
+
+_LEAD = re.compile(r"^(?:मेरा|मेरे|हमारा|उनका|उसका|इनका|ठेकेदार\s+का|साइट\s+का|माझं|माझे|माझा|my)\s*"
+                   r"(?:नाम|नाव|name)\s*(?:है|हैं|आहे|is)?\s*", re.IGNORECASE)
+_TAIL = re.compile(r"(?:\s+(?:है|हैं|हूँ|हूं|आहे|जी))+$")
+
+
+def clean_dictation(text: str, field: str = "text") -> str:
+    """Trim what Whisper adds around a short answer; for names, drop "मेरा नाम … है"-style framing."""
+    t = re.sub(r"\s+", " ", text or "").strip()
+    t = re.sub(r"^[\s\"'“”‘’.,!?।]+|[\s\"'“”‘’.,!?।]+$", "", t)
+    if field == "name":
+        t = _LEAD.sub("", t)
+        t = _TAIL.sub("", t)
+        t = re.sub(r"[.,!?।]+$", "", t).strip()
+    return t[:300] if field == "question" else t[:60]  # a question to the सहायक can be longer
+
+
+@router.post("/api/dictate")
+def dictate(audio: UploadFile = File(...), language: str = Form("hi"), field: Literal["name", "text", "question"] = Form("text"),
+            keep_audio: bool = Form(True), engine: str = Form("local")):
+    data = audio.file.read()
+    if not data:
+        raise HTTPException(400, "EMPTY_AUDIO")
+    if len(data) > 2_000_000:  # a 10 s Opus clip is ~20 KB
+        raise HTTPException(413, "AUDIO_TOO_LONG")
+    audio_sha = _sha(data)  # hashed before anything else
+    rel_dir = Path("media") / "dictation" / uuid.uuid4().hex[:16]
+    d = settings.data_dir / rel_dir
+    d.mkdir(parents=True, exist_ok=True)
+    src = d / f"original{_ext(audio.filename, '.webm')}"
+    src.write_bytes(data)
+    try:
+        wav = asr.to_wav16k(src, d / "16k.wav")
+        res = asr.transcribe_wav(wav, language if language in ("hi", "mr") else "auto",
+                                 **({"engine": "cloud"} if engine == "cloud" else {}))
+    except asr.ASRUnavailable as ex:
+        raise HTTPException(503, "ASR_UNAVAILABLE") from ex
+    finally:
+        (d / "16k.wav").unlink(missing_ok=True)
+        if not keep_audio:  # the worker said "don't keep my voice": hash was taken, bytes go
+            src.unlink(missing_ok=True)
+            d.rmdir()
+    raw = (res.get("text") or "").strip()
+    return {"text": clean_dictation(raw, field), "raw": raw, "audio_sha256": audio_sha}
+
+
+# --- optional ChatGPT read-back voice (female) ----------------------------------------------------------
+# Only when CHAT_API_KEY is set and the worker picked the cloud engine. The text is a code-filled template
+# shown on screen; the phone falls back to its own speech engine on any error.
+class TtsIn(BaseModel):
+    text: str
+    lang: Literal["hi", "mr", "en"] = "hi"
+
+
+@router.post("/api/tts")
+def tts(body: TtsIn):
+    if not settings.cloud_configured:
+        raise HTTPException(503, "CLOUD_NOT_CONFIGURED")
+    text = body.text.strip()
+    if not text or len(text) > 2000:
+        raise HTTPException(422, "BAD_TEXT")
+    try:
+        audio = cloud.tts(text, body.lang)
+    except cloud.CloudUnavailable as ex:
+        raise HTTPException(503, str(ex)) from ex
+    return Response(audio, media_type="audio/mpeg", headers={"Cache-Control": "private, max-age=86400"})

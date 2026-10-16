@@ -1,7 +1,7 @@
 // Thin component layer for the UI/ clone. Icons are lucide-react (bundled, no CDN).
 import { createContext, useContext } from 'react'
 import {
-  ArrowLeft, CalendarCheck, Check, CircleAlert, CircleHelp, FileText, House, IndianRupee, Volume2, X,
+  ArrowLeft, Bot, CalendarCheck, Check, CircleAlert, CircleHelp, FileText, House, IndianRupee, Volume2, X,
 } from 'lucide-react'
 import { speak } from '../lib/device.js'
 
@@ -83,6 +83,7 @@ const TABS = [
   { id: 'ledger', label: 'खाता', icon: CalendarCheck },
   { id: 'hisaab', label: 'हिसाब', icon: IndianRupee },
   { id: 'file', label: 'फ़ाइल', icon: FileText },
+  { id: 'agent', label: 'सहायक', icon: Bot },
 ]
 export function TabBar({ active }) {
   const { reset } = useApp()

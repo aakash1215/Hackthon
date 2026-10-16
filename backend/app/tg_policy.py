@@ -19,6 +19,11 @@ TEMPLATES: dict[str, dict[str, str]] = {
         "hi": "नमस्ते / नमस्कार / Hello — मैं {worker} का 'अपना हिसाब' सहायक हूँ। यह चैट रिकॉर्ड होती है। "
               "भाषा चुनें / भाषा निवडा / Choose a language:",
     },
+    "NEED_INVITE": {  # /start without a valid invite: introduce, say it is recorded, nothing else
+        "hi": "नमस्ते, यह 'अपना हिसाब' सहायक है। यह चैट रिकॉर्ड होती है। बात शुरू करने के लिए मज़दूर से मिला "
+              "लिंक खोलें।\nनमस्कार, हा 'आपला हिशोब' सहाय्यक आहे. ही चॅट रेकॉर्ड होते. कामगाराकडून मिळालेली लिंक उघडा.\n"
+              "Hello, this is the 'Apna Hisaab' assistant. This chat is recorded. Please open the link the worker sent you.",
+    },
     "INTRO": {
         "hi": "नमस्ते, मैं {worker} का 'अपना हिसाब' सहायक हूँ। इस चैट के संदेश {worker} के काम और भुगतान के "
               "रिकॉर्ड के रूप में सुरक्षित रखे जाते हैं।",
