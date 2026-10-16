@@ -5,6 +5,7 @@ Run (from backend/):  uv run --no-project python -m app.main
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
@@ -12,12 +13,21 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from . import api, db
 from .config import REPO_ROOT, settings
 
 log = logging.getLogger("apna_hisaab")
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
-app = FastAPI(title="Apna Hisaab", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    db.init_db()  # WAL SQLite; idempotent
+    yield
+
+
+app = FastAPI(title="Apna Hisaab", version="0.1.0", lifespan=lifespan)
+app.include_router(api.router)  # before the SPA catch-all below, so /api/* routes win
 
 
 async def _llm_status() -> dict:

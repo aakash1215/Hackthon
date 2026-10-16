@@ -19,7 +19,7 @@
 | Phase | Target end | Status | Notes |
 |---|---|---|---|
 | P0 Setup, restore, model servers, HTTPS | 10:30 | ✅ 10:55 | pytest 19 green (F1–F9 + health). HTTPS `/api/health` OK on LAN IP (curl, verified chain); phone check pending (CA install). llama-server CPU + Qwen3-1.7B: schema JSON in 18 s, grounded evidence, but **wrong values** (सात→5 PM, पाँच सौ→5000) → normalizer must parse evidence spans in code. whisper-small int8: 7.4 s clip in 11.4 s. `av` pinned 15.1 (faster-whisper compat). Qwen3.5-2B compared: slower (26.6 s) and worse spans → **keep Qwen3-1.7B** on CPU. Scripts: `scripts/download_models.sh cpu\|gpu\|indic`, `start_llm.sh`, `make_certs.sh`, `smoke_llm.py`. |
-| P1 Evidence core backend | 12:00 (**CP1**) | ☐ | |
+| P1 Evidence core backend | 12:00 (**CP1**) | ◐ 11:10 | Backend done: save+hash first, hash chain + verify, process/confirm, normalizer, reconciler, LLM extract, ledger, hisaab (wraps engine), profiles, chain verify. pytest 58 green (incl. F1–F9). Real ASR + real LLM over HTTP verified on an English clip. **Open:** 1 hi + 1 mr clip through the app needs Akash's recordings in `data/demo_clips/`; text-level hi/mr check run with `scripts/p1_text_check.py`. Qwen3-1.7B on CPU: 20–80 s per entry, and quotes often ungrounded (dropped, flagged). |
 | P2 Mobile PWA cloned from `UI/` + offline queue | 13:30 (**CP2**) | ☐ | |
 | P3 Corroboration layer + evidence packet | 15:00 (**CP3**) | ☐ | |
 | P4 Telegram thekedar agent | 16:00 (**CP4**, feature freeze) | ☐ | |

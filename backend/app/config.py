@@ -38,6 +38,7 @@ class Settings:
     asr_model: str  # local path (relative to repo root) or HF id
     asr_device: str  # cpu | cuda
     asr_compute_type: str  # int8 | int8_float16 | float16
+    asr_beam_size: int  # 1 is fastest on the CPU tier
     # Optional services
     tts_enabled: bool
     telegram_bot_token: str
@@ -75,6 +76,7 @@ def load_settings() -> Settings:
         asr_model=os.getenv("ASR_MODEL", "models/asr/faster-whisper-small"),
         asr_device=os.getenv("ASR_DEVICE", "cpu").strip().lower(),
         asr_compute_type=os.getenv("ASR_COMPUTE_TYPE", "int8"),
+        asr_beam_size=int(os.getenv("ASR_BEAM_SIZE", "1")),
         tts_enabled=_bool("TTS_ENABLED", False),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", "").strip(),
         telegram_bot_username=os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@"),
