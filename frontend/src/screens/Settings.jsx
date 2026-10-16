@@ -1,14 +1,16 @@
 // Settings & safety (UI/ F2, the parts P2 needs): chain check, upload queue, language, audio consent.
 // Not built yet: SMS record code, PIN, delete one/all (PIN is cut line §4 #7; deletes need the P3 tombstone UI).
 import { useEffect, useState } from 'react'
-import { ChevronRight, CloudUpload, Languages, Mic, RefreshCw, ShieldCheck, CircleAlert } from 'lucide-react'
-import { TopBar, useApp } from '../components/Ui.jsx'
+import { Check, ChevronRight, CloudUpload, Languages, MessageCircle, Mic, RefreshCw, ShieldCheck, CircleAlert, Users } from 'lucide-react'
+import { Btn, Sheet, TopBar, useApp } from '../components/Ui.jsx'
 import * as api from '../lib/api.js'
 import { flush, queueJson } from '../lib/sync.js'
 
 export default function Settings() {
-  const { profile, setProfile, sync, back, toast } = useApp()
+  const { profile, setProfile, sync, back, go, toast } = useApp()
   const [chain, setChain] = useState(null)
+  const [unionSheet, setUnionSheet] = useState(false)
+  const [unionDraft, setUnionDraft] = useState(profile.union_phone || '')
   const check = () => { setChain(null); api.chainVerify().then(setChain).catch(() => setChain({ offline: true })) }
   useEffect(check, [])
 
@@ -20,6 +22,13 @@ export default function Settings() {
       default_break_min: p.usual?.break_min ?? null, consent_keep_audio: p.consent_keep_audio, gps_opt_in: !!p.gps_opt_in,
     })
     toast('बदलाव सेव हो गया')
+  }
+
+  // P4: the union / helper number used by the "बातचीत रोक दी गई" call list. Stays on the phone.
+  async function saveUnion() {
+    await setProfile({ ...profile, union_phone: unionDraft.trim() || null })
+    setUnionSheet(false)
+    toast('नंबर सेव हो गया')
   }
 
   return (
@@ -43,6 +52,21 @@ export default function Settings() {
         </button>
       </div>
 
+      <div className="label">ठेकेदार</div>
+      <div className="card">
+        <button className="settings-row" onClick={() => go('telegram')}>
+          <span className="icon-bubble"><MessageCircle size={20} /></span>
+          <div className="grow"><div className="t">ठेकेदार से Telegram पर जुड़ें</div><div className="d">सिर्फ़ तय संदेश · हर संदेश सेव</div></div>
+          <ChevronRight size={22} color="var(--text-2)" />
+        </button>
+        <button className="settings-row" onClick={() => { setUnionDraft(profile.union_phone || ''); setUnionSheet(true) }}>
+          <span className="icon-bubble"><Users size={20} /></span>
+          <div className="grow"><div className="t">यूनियन / सहायक का नंबर</div><div className="d">मुश्किल में एक टैप से कॉल</div></div>
+          <span className="muted">{profile.union_phone || 'जोड़ें'}</span>
+          <ChevronRight size={22} color="var(--text-2)" />
+        </button>
+      </div>
+
       <div className="label">आप और आपका डेटा</div>
       <div className="card">
         <div className="settings-row">
@@ -57,6 +81,16 @@ export default function Settings() {
           <ChevronRight size={22} color="var(--text-2)" />
         </button>
       </div>
+      <Sheet open={unionSheet} onClose={() => setUnionSheet(false)}>
+        <h2>यूनियन / सहायक का नंबर</h2>
+        <div className="field" style={{ marginTop: 10 }}>
+          <input type="tel" inputMode="tel" autoFocus value={unionDraft} maxLength={15} onChange={(e) => setUnionDraft(e.target.value.replace(/[^\d+]/g, ''))} />
+        </div>
+        <div className="btn-row" style={{ marginTop: 16 }}>
+          <Btn variant="plain" className="narrow" onClick={() => setUnionSheet(false)}>रद्द</Btn>
+          <Btn icon={Check} onClick={saveUnion}>सेव करें</Btn>
+        </div>
+      </Sheet>
       <p className="center small" style={{ marginTop: 'auto' }}>हब पर काम · आवाज़ पहले फ़ोन में सेव · संस्करण 0.2</p>
     </div>
   )

@@ -80,3 +80,14 @@ export const evidenceList = (workerId, kind) => apiJson('GET', `/api/evidence?${
 export const coach = (workerId) => apiJson('GET', `/api/coach?${q(workerId)}`)
 // The packet build renders a PDF on the hub; allow it time.
 export const exportPacket = (body) => apiJson('POST', '/api/export', body, { timeoutMs: 120000 })
+
+// --- P4: Telegram thekedar agent, inbox, promises -------------------------------------------------
+// The phone only triggers server-side templates; it never writes free text to the thekedar.
+export const telegramStatus = (workerId) => apiJson('GET', `/api/telegram/status?${q(workerId)}`, null, { timeoutMs: 8000 })
+export const telegramInvite = (workerId) => apiJson('POST', '/api/telegram/invite', { worker_id: workerId })
+export const telegramSettings = (workerId, patch) => apiJson('POST', '/api/telegram/settings', { worker_id: workerId, ...patch })
+export const telegramSend = (workerId, template) => apiJson('POST', '/api/telegram/send', { worker_id: workerId, template })
+export const telegramMessages = (workerId) => apiJson('GET', `/api/telegram/messages?${q(workerId)}`, null, { timeoutMs: 8000 })
+export const inbox = (workerId) => apiJson('GET', `/api/inbox?${q(workerId)}`, null, { timeoutMs: 8000 })
+export const inboxAction = (id, body) => apiJson('POST', `/api/inbox/${encodeURIComponent(id)}`, body)
+export const promises = (workerId) => apiJson('GET', `/api/promises?${q(workerId)}`)

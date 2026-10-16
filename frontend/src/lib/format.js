@@ -77,3 +77,31 @@ export function weekOf(iso) {
   const dow = (d.getDay() + 6) % 7
   return Array.from({ length: 7 }, (_, i) => addDays(iso, i - dow))
 }
+
+/** Telegram server time (UTC ISO) → "16 अक्टूबर, 2:05" in the phone's local time. Display only. */
+export function tgTime(isoUtc) {
+  if (!isoUtc) return ''
+  const d = new Date(isoUtc)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.getDate()} ${MONTHS[d.getMonth()]}, ${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+// Weekday words the thekedar may use (Hindi, Marathi, romanised, English) → JS getDay() index.
+const WD_WORDS = [
+  [0, ['रविवार', 'इतवार', 'ravivar', 'raviwar', 'itvar', 'itwar', 'sunday']],
+  [1, ['सोमवार', 'सोमवारी', 'somvar', 'somwar', 'somvaar', 'somwaar', 'monday']],
+  [2, ['मंगलवार', 'मंगळवार', 'mangalvar', 'mangalwar', 'mangalvaar', 'tuesday']],
+  [3, ['बुधवार', 'budhvar', 'budhwar', 'budhvaar', 'wednesday']],
+  [4, ['गुरुवार', 'बृहस्पतिवार', 'guruvar', 'guruwar', 'guruvaar', 'thursday']],
+  [5, ['शुक्रवार', 'shukravar', 'shukrawar', 'sukravar', 'friday']],
+  [6, ['शनिवार', 'shanivar', 'shaniwar', 'shanivaar', 'saturday']],
+]
+/** Weekday index named in a phrase like "Somvaar" / "सोमवार को", or null if it names no weekday. */
+export function weekdayFromWords(text) {
+  if (!text) return null
+  const t = String(text).toLowerCase()
+  for (const [i, words] of WD_WORDS) if (words.some((w) => t.includes(w))) return i
+  return null
+}
+export const weekdayName = (iso) => WEEKDAYS[asDate(iso).getDay()]
+export const weekdayOf = (iso) => asDate(iso).getDay()

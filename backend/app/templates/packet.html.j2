@@ -151,7 +151,7 @@ main > * { position: relative; z-index: 1; }
   {% for m in tg %}
   <tr><td>{{ m.tg_date }}</td><td>{{ 'thekedar → bot' if m.direction == 'in' else 'bot → thekedar (template ' ~ (m.template_id or '') ~ ')' }}</td>
     <td>{{ m.text or '' }}{% if m.transcript %}<br><i>voice: “{{ m.transcript }}”</i>{% endif %}</td>
-    <td>{{ (m.classification or {}).get('intent', '') if m.classification is mapping else '' }}</td><td class="mono">{{ (m.sha256 or '')[:16] }}</td></tr>
+    <td>{% if m.classification.intent %}{{ intent_en.get(m.classification.intent, m.classification.intent) }}{% if m.classification.guard %} (word guard){% endif %}{% endif %}</td><td class="mono">{{ (m.sha256 or '')[:16] }}</td></tr>
   {% endfor %}
 </table>
 {% endif %}

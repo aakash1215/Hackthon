@@ -43,6 +43,7 @@ class Settings:
     tts_enabled: bool
     telegram_bot_token: str
     telegram_bot_username: str
+    telegram_proxy: str  # optional http(s)/socks proxy when the network blocks api.telegram.org
     demo_mode: bool
     # Storage and server
     data_dir: Path
@@ -80,6 +81,7 @@ def load_settings() -> Settings:
         tts_enabled=_bool("TTS_ENABLED", False),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", "").strip(),
         telegram_bot_username=os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@"),
+        telegram_proxy=os.getenv("TELEGRAM_PROXY", "").strip(),
         demo_mode=_bool("DEMO_MODE", True),
         data_dir=_path(os.getenv("DATA_DIR", "data")),
         host=os.getenv("HOST", "0.0.0.0"),

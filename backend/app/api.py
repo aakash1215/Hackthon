@@ -545,6 +545,10 @@ def confirm_entry(entry_id: str, body: ConfirmIn):
                                                 "amount": confirmed["balance_promised"],
                                                 "due": confirmed.get("promised_date")}, e["worker_id"])
         head = events.head(c)
+    if kind in ("workday", "payment"):
+        from . import telegram_bot  # DAILY_UPDATE / PAYMENT_ACK; never fails the confirm
+
+        telegram_bot.on_entry_confirmed(e["worker_id"], kind, confirmed)
     return {"entry_id": entry_id, "kind": kind, "status": "confirmed", "chain_head": head}
 
 
@@ -683,6 +687,14 @@ def day_levels(c, worker_id: str, days: list[str]) -> dict[str, dict]:
             thekedar.append({"rec_day": _day_of(r["client_ts"] or r["server_ts"]),
                              "days_counted": cf.get("days_counted"), "intent": cf.get("intent"),
                              "ref": r["audio_sha256"]})
+    # Telegram: a promise counts once the worker confirmed it; a dispute shows until the worker dismisses it.
+    from .telegram_bot import local_day
+
+    for r in c.execute("SELECT kind, status, tg_date, message_sha256 FROM inbox WHERE worker_id=? AND "
+                       "((kind='promise' AND status='confirmed') OR (kind='dispute' AND status IN ('new','seen')))",
+                       (worker_id,)):
+        thekedar.append({"rec_day": local_day(r["tg_date"]), "days_counted": None, "ref": r["message_sha256"],
+                         "intent": "promise_to_pay" if r["kind"] == "promise" else "disputes_days"})
     return corroboration.compute_levels(days, site=site_pt, photos=[p for p in photos if p["day"]],
                                         fixes=[f for f in fixes if f["day"]], coworker=coworker,
                                         thekedar=[t for t in thekedar if t["rec_day"]])

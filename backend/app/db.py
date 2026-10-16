@@ -135,7 +135,19 @@ CREATE TABLE IF NOT EXISTS tg_messages (
   tg_date TEXT,
   text TEXT, voice_path TEXT, voice_sha256 TEXT, transcript TEXT,
   classification TEXT, template_id TEXT, sha256 TEXT,
-  created_at TEXT
+  created_at TEXT,
+  status TEXT NOT NULL DEFAULT 'received'
+);
+CREATE TABLE IF NOT EXISTS inbox (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL REFERENCES workers(id),
+  tg_message_row TEXT,
+  kind TEXT NOT NULL CHECK (kind IN ('promise','partial_payment','dispute','refuses','hostile','message')),
+  status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','confirmed','denied','dismissed','seen')),
+  text TEXT, intent TEXT, confidence TEXT,
+  amount INTEGER, date_text TEXT, days INTEGER,
+  tg_date TEXT, message_sha256 TEXT, promise_id TEXT,
+  created_at TEXT NOT NULL, resolved_at TEXT
 );
 """
 
@@ -144,6 +156,7 @@ CREATE TABLE IF NOT EXISTS tg_messages (
 _ADDED_COLUMNS = {
     "entries": {"notice_lang": "TEXT", "reply": "TEXT"},
     "evidence": {"client_sha256": "TEXT", "hash_match": "INTEGER"},
+    "tg_messages": {"status": "TEXT NOT NULL DEFAULT 'received'"},
 }
 
 _write_lock = threading.RLock()

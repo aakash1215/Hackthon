@@ -27,7 +27,7 @@ img { display: block; max-width: 100%; }
 /* ---- screen frame ---------------------------------------------------- */
 .screen {
   min-height: 100dvh;
-  padding: 14px 13% 28px;
+  padding: 14px var(--gutter) 28px;
   display: flex;
   flex-direction: column;
 }
@@ -190,8 +190,8 @@ h1.title { font-size: var(--fs-title); font-weight: 700; margin: 18px 0 4px; lin
 
 /* ---- welcome (splash) -------------------------------------------------- */
 .welcome-hero {
-  /* .screen pads 13% of #root; a % margin here resolves against the 74%-wide content box */
-  margin: -14px -17.6% 0; padding: 72px 17.6% 40px; text-align: center;
+  /* full-bleed: cancel the .screen gutter */
+  margin: -14px calc(-1 * var(--gutter)) 0; padding: 72px var(--gutter) 40px; text-align: center;
   background: linear-gradient(180deg, #e9dccb 0%, #d9b98f 55%, #c38a4f 100%);
   position: relative;
 }
@@ -201,7 +201,7 @@ h1.title { font-size: var(--fs-title); font-weight: 700; margin: 18px 0 4px; lin
 .welcome-title { font-size: 44px; font-weight: 700; color: #b9834a; margin: 0; text-shadow: 0 2px 0 rgba(90, 50, 10, 0.25); line-height: 1.2; }
 .welcome-sub { font-size: 17px; margin: 14px 0 22px; }
 .welcome-pill { display: inline-block; background: #f5ede3; color: var(--ask); font-weight: 700; border-radius: var(--radius-pill); padding: 8px 22px; font-size: 15px; }
-.welcome-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px -8% 22px; }
+.welcome-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0; }
 .welcome-card { background: linear-gradient(180deg, #d8bb98, #c9a278); border-radius: 18px; padding: 14px 6px; text-align: center; }
 .welcome-card .bubble { width: 46px; height: 46px; border-radius: 50%; background: #f5ede3; color: #b9834a; display: grid; place-items: center; margin: 0 auto 8px; }
 .welcome-card .name { font-weight: 700; font-size: 16px; }
@@ -328,7 +328,7 @@ h1.title { font-size: var(--fs-title); font-weight: 700; margin: 18px 0 4px; lin
 
 /* bottom sheet */
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(20, 23, 43, 0.45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
-.sheet { background: #fff; width: min(100%, var(--app-max-width)); border-radius: 26px 26px 0 0; padding: 10px 8% calc(20px + env(safe-area-inset-bottom)); max-height: 88dvh; overflow: auto; }
+.sheet { background: #fff; width: min(100%, var(--app-max-width)); border-radius: 26px 26px 0 0; padding: 10px 20px calc(20px + env(safe-area-inset-bottom)); max-height: 88dvh; overflow: auto; }
 .sheet .handle { width: 32px; height: 4px; border-radius: 4px; background: var(--border); margin: 0 auto 14px; }
 .sheet .kicker { color: var(--ask); font-weight: 700; display: flex; align-items: center; gap: 6px; }
 .sheet h2 { font-size: 20px; margin: 6px 0 4px; }
@@ -490,3 +490,52 @@ h1.title.lg { font-size: 26px; margin-top: 10px; }
 .switch.on::after { left: 28px; }
 .btn.big { min-height: var(--btn-h); font-size: 18px; margin-top: 14px; }
 a.btn { text-decoration: none; }
+
+/* ---- P4: वादा (UI/ S7) ---------------------------------------------------- */
+.hero-bubble { width: 48px; height: 48px; border-radius: 50%; background: var(--blue-soft); color: var(--brand); display: grid; place-items: center; margin: 14px auto 10px; }
+.hero-title { font-size: 22px; font-weight: 700; text-align: center; margin: 0; line-height: 1.3; }
+.hero-sub { color: var(--text-2); font-size: 14.5px; text-align: center; margin: 2px 0 14px; }
+.quote.lg { padding: 12px 14px 14px; }
+.quote.lg p { font-size: 18px; margin-top: 8px; }
+.remind-row { display: flex; align-items: center; gap: 10px; background: var(--blue-soft); border-radius: var(--radius-card); padding: 12px 14px; margin-top: 12px; min-height: 60px; font-weight: 700; font-size: 15.5px; }
+.remind-row svg { color: var(--brand); flex: none; }
+.past-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; min-height: 56px; font-weight: 700; font-size: 16px; }
+.past-row + .past-row { border-top: 1px solid var(--border); }
+
+/* ---- P4: बातचीत रोक दी गई (UI/ S8) ----------------------------------------- */
+.stop-hero { margin: -14px calc(-1 * var(--gutter)) 0; padding: 48px var(--gutter) 22px; text-align: center; background: var(--urgent-bg); }
+.shield-ring { width: 78px; height: 78px; border-radius: 50%; border: 2.5px solid var(--urgent); background: #fff; display: grid; place-items: center; margin: 0 auto 16px; color: var(--urgent); }
+.stop-hero h1 { font-size: 26px; margin: 0; line-height: 1.3; }
+.stop-hero p { color: var(--text-2); font-size: 15.5px; margin: 4px 0 0; }
+.stop-hero .code-pill { font-size: 13.5px; color: var(--text-2); padding: 4px 10px; margin: 14px auto 0; }
+.call-card { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 10px; margin-bottom: 10px; text-decoration: none; color: inherit; width: 100%; text-align: left; min-height: 64px; }
+.call-card .icon-bubble { width: 34px; height: 34px; background: var(--blue-soft); color: var(--brand); }
+.call-card .icon-bubble.red { background: var(--urgent-bg); color: var(--urgent); }
+.call-card .t { font-weight: 700; font-size: 17px; line-height: 1.3; }
+.call-card .d { color: var(--text-2); font-size: 14.5px; }
+.call-btn { width: 48px; height: 48px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; flex: none; }
+.call-btn.red { background: var(--urgent); }
+
+/* ---- P4: Telegram (composed from F2 / S4) ----------------------------------- */
+.qr-card { padding: 16px 14px; text-align: center; margin-top: 12px; }
+.qr-card img { width: 220px; height: 220px; margin: 0 auto 10px; image-rendering: pixelated; border-radius: 12px; }
+.qr-card .link-text { font-size: 13.5px; color: var(--blue-ink); word-break: break-all; font-weight: 700; }
+.thread { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.msg { max-width: 86%; border-radius: 18px; padding: 10px 12px 8px; font-size: 15.5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+.msg.out { align-self: flex-end; background: var(--blue-soft); border-bottom-right-radius: 6px; }
+.msg.in { align-self: flex-start; background: var(--card); border: 1px solid var(--border); border-bottom-left-radius: 6px; }
+.msg .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; color: var(--text-3); font-size: 12.5px; white-space: normal; }
+.msg .transcript { color: var(--text-2); font-size: 13.5px; margin-top: 4px; }
+
+/* ---- P4: inbox cards on होम ---------------------------------------------- */
+.inbox-card { padding: 12px 14px; margin-top: 12px; }
+.inbox-card.ask { background: var(--ask-bg); border: 1.5px solid var(--ask-border); }
+.inbox-card.urgent { background: var(--urgent-bg); border: 1.5px solid var(--urgent); }
+.inbox-card .h { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16.5px; line-height: 1.35; }
+.inbox-card .h svg { color: var(--brand); flex: none; }
+.inbox-card.ask .h svg { color: var(--ask); }
+.inbox-card.urgent .h svg { color: var(--urgent); }
+.inbox-card .said { color: var(--text-2); font-size: 14.5px; margin: 6px 0 0; }
+.inbox-card .btn-row { margin-top: 10px; }
+.inbox-card .btn { min-height: 48px; font-size: 16px; }
+button.inbox-card { width: 100%; text-align: left; display: block; }

@@ -220,7 +220,8 @@ def _gather(c, worker_id: str, d_from: str, d_to: str, redact: bool) -> dict:
     tg = []
     try:
         tg = _rows(c, "SELECT * FROM tg_messages WHERE worker_id=? ORDER BY tg_date", (worker_id,))
-        tg = [m for m in tg if in_period(m["tg_date"])]
+        tg = [{**m, "classification": json.loads(m["classification"]) if m["classification"] else {}}
+              for m in tg if in_period(m["tg_date"]) and m["status"] in ("sent", "received")]
     except Exception:  # noqa: BLE001 — table arrives with P4
         tg = []
     promises = _rows(c, "SELECT * FROM promises WHERE worker_id=? ORDER BY created_at", (worker_id,))

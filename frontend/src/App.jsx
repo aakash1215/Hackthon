@@ -15,9 +15,12 @@ import Later from './screens/Later.jsx'
 import HisaabCheck from './screens/HisaabCheck.jsx'
 import RecordOther from './screens/RecordOther.jsx'
 import Diff from './screens/Diff.jsx'
+import Telegram from './screens/Telegram.jsx'
+import PromiseScreen from './screens/Promise.jsx'
+import Stopped from './screens/Stopped.jsx'
 
 const SCREENS = { home: Home, record: Record, saved: Saved, confirm: Confirm, ledger: Ledger, hisaab: Hisaab, file: FileTab, settings: Settings, later: Later,
-  hisaabCheck: HisaabCheck, recordOther: RecordOther, diff: Diff }
+  hisaabCheck: HisaabCheck, recordOther: RecordOther, diff: Diff, telegram: Telegram, promise: PromiseScreen, stopped: Stopped }
 
 export default function App() {
   const [profile, setProfileState] = useState(undefined) // undefined = loading

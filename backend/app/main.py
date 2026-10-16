@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import api, db, evidence_api
+from . import api, db, evidence_api, telegram_bot
 from .config import REPO_ROOT, settings
 
 log = logging.getLogger("apna_hisaab")
@@ -23,12 +23,16 @@ FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     db.init_db()  # WAL SQLite; idempotent
+    if settings.telegram_configured:  # long polling in this event loop; retries quietly while offline
+        telegram_bot.RUNTIME.start()
     yield
+    await telegram_bot.RUNTIME.stop()
 
 
 app = FastAPI(title="Apna Hisaab", version="0.1.0", lifespan=lifespan)
 app.include_router(api.router)  # before the SPA catch-all below, so /api/* routes win
 app.include_router(evidence_api.router)
+app.include_router(telegram_bot.router)
 
 
 async def _llm_status() -> dict:
@@ -65,7 +69,8 @@ async def health() -> dict:
         "llm": llm,
         "asr": asr,
         "tts": {"enabled": settings.tts_enabled},
-        "telegram": {"configured": settings.telegram_configured, "bot": settings.telegram_bot_username or None},
+        "telegram": {"configured": settings.telegram_configured, "bot": settings.telegram_bot_username or None,
+                     "running": telegram_bot.RUNTIME.running},
     }
 
 

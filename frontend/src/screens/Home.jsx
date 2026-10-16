@@ -1,8 +1,8 @@
 // Home (UI/ D1). Additions in the same style: upload-queue status in the trust chip and a
 // "phone-saved / to confirm" list (BUILD_PLAN P2 offline queue).
-import { useEffect, useState } from 'react'
-import { Banknote, Check, ChevronRight, CircleAlert, CloudUpload, History, Mic, Scale, ShieldAlert, ShieldCheck } from 'lucide-react'
-import { TabBar, TopBar, useApp } from '../components/Ui.jsx'
+import { useCallback, useEffect, useState } from 'react'
+import { Banknote, Check, ChevronRight, CircleAlert, CloudUpload, Handshake, History, MessageCircle, Mic, Scale, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { Btn, TabBar, TopBar, useApp } from '../components/Ui.jsx'
 import * as api from '../lib/api.js'
 import { read, write } from '../lib/db.js'
 import { clock12, localIso, longDate, monthRange, rupees, todayIso, weekOf, weekdayShort } from '../lib/format.js'
@@ -18,6 +18,7 @@ export default function Home() {
   const [copying, setCopying] = useState(false)
   const today = todayIso()
   const name = profile.display_name || 'साथी'
+  const tName = profile.thekedar?.name ? `${profile.thekedar.name} जी` : 'ठेकेदार'
 
   useEffect(() => {
     let alive = true
@@ -37,6 +38,30 @@ export default function Home() {
   }, [profile.worker_id, today, sync.hub])
 
   useEffect(() => { pendingRecords().then(setPending) }, [sync.queued, sync.running])
+
+  // P4: what the thekedar said on Telegram. Polled while Home is open; errors are ignored (hub/bot down).
+  const [inbox, setInbox] = useState([])
+  const [acting, setActing] = useState(null)
+  const loadInbox = useCallback(() => {
+    api.inbox(profile.worker_id).then((r) => setInbox((r.items || []).filter((it) => it.status === 'new'))).catch(() => {})
+  }, [profile.worker_id])
+  useEffect(() => {
+    loadInbox()
+    const t = setInterval(loadInbox, 20000)
+    return () => clearInterval(t)
+  }, [loadInbox])
+  async function act(it, action, msg) {
+    setActing(it.id)
+    try {
+      const r = await api.inboxAction(it.id, { action })
+      setInbox((xs) => xs.filter((x) => x.id !== it.id))
+      if (msg) toast(`${msg}${r.chain_head?.short ? ` · कोड ${r.chain_head.short}` : ''}`)
+    } catch (e) {
+      toast(e instanceof api.NetworkError ? 'हब से नहीं जुड़ पाए' : `नहीं हो पाया (${e.code})`)
+    } finally {
+      setActing(null)
+    }
+  }
 
   const days = data?.led?.days || []
   const pays = data?.led?.payments || []
@@ -124,6 +149,16 @@ export default function Home() {
         </div>
       )}
 
+      <div className="card" style={{ marginTop: 12 }}>
+        <button className="settings-row" onClick={() => go('telegram')}>
+          <span className="icon-bubble blue"><MessageCircle size={20} /></span>
+          <div className="grow"><div className="t">ठेकेदार से Telegram</div><div className="d">सिर्फ़ तय संदेश · हर संदेश सेव</div></div>
+          <ChevronRight size={22} color="var(--text-2)" />
+        </button>
+      </div>
+
+      {inbox.map((it) => <InboxCard key={it.id} it={it} tName={tName} busy={acting === it.id} act={act} go={go} />)}
+
       <div className="card week" style={{ marginTop: 12 }}>
         <div className="h">इस हफ़्ते</div>
         <div className="week-days">
@@ -154,6 +189,59 @@ export default function Home() {
       </button>
 
       <TabBar active="home" />
+    </div>
+  )
+}
+
+// One Telegram inbox item (BUILD_PLAN §7). The thekedar's words are shown verbatim; nothing is saved
+// as a fact until the worker taps a button here or confirms on the वादा screen.
+function InboxCard({ it, tName, busy, act, go }) {
+  const said = it.text ? <p className="said">“{it.text}”</p> : null
+  if (it.kind === 'promise') {
+    return (
+      <button className="card inbox-card" onClick={() => go('promise', { item: it })}>
+        <div className="h"><Handshake size={22} /><span className="grow">{tName} ने वादा किया: {it.amount != null ? rupees(it.amount) : 'रक़म नहीं बताई'}{it.date_text ? ` · ${it.date_text}` : ''}</span><span className="chip blue sm">देखें</span></div>
+      </button>
+    )
+  }
+  if (it.kind === 'partial_payment') {
+    return (
+      <div className="card inbox-card">
+        <div className="h"><Banknote size={22} /><span>{tName} कहते हैं {it.amount != null ? rupees(it.amount) : 'पैसे'} दिए। सही है?</span></div>
+        {said}
+        <div className="btn-row">
+          <Btn variant="plain" disabled={busy} onClick={() => act(it, 'deny', 'सेव हुआ: नहीं मिले')}>नहीं मिले</Btn>
+          <Btn icon={Check} disabled={busy} onClick={() => act(it, 'confirm', 'सेव हुआ: मिले थे')}>हाँ, मिले थे</Btn>
+        </div>
+      </div>
+    )
+  }
+  if (it.kind === 'dispute') {
+    return (
+      <div className="card inbox-card ask">
+        <div className="h"><CircleAlert size={22} /><span>{tName} ने दिन नहीं माने</span></div>
+        {said}
+        <div className="btn-row">
+          <Btn variant="plain" disabled={busy} onClick={() => act(it, 'dismiss', 'ठीक है — हटा दिया')}>गलत समझा</Btn>
+          <Btn disabled={busy} onClick={() => act(it, 'seen')}>ठीक</Btn>
+        </div>
+      </div>
+    )
+  }
+  if (it.kind === 'hostile') {
+    return (
+      <button className="card inbox-card urgent" onClick={() => go('stopped', { item: it })}>
+        <div className="h"><ShieldAlert size={22} /><span className="grow">बातचीत रोक दी गई</span><ChevronRight size={22} color="var(--urgent)" /></div>
+        <p className="said">आप सुरक्षित रहें — मदद के नंबर देखें</p>
+      </button>
+    )
+  }
+  // refuses, or an unclear message
+  return (
+    <div className={`card inbox-card ${it.kind === 'refuses' ? 'ask' : ''}`}>
+      <div className="h">{it.kind === 'refuses' ? <CircleAlert size={22} /> : <MessageCircle size={22} />}<span>{it.kind === 'refuses' ? `${tName} ने मना किया` : `${tName} का नया संदेश`}</span></div>
+      {said}
+      <div className="btn-row"><Btn variant="plain" disabled={busy} onClick={() => act(it, 'seen')}>ठीक</Btn></div>
     </div>
   )
 }

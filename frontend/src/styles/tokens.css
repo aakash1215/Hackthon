@@ -40,7 +40,7 @@
   --radius-card: 20px;
   --radius-btn: 16px;
   --radius-pill: 999px;
-  --gutter: 20px;
+  --gutter: 16px;            /* phone side gutter (CLAUDE.md); the mock-ups' 13% margin crushed content on a 360 px phone */
   --tap-min: 48px;
   --btn-h: 58px;
   --app-max-width: 430px;
