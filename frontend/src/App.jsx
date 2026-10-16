@@ -12,8 +12,12 @@ import Hisaab from './screens/Hisaab.jsx'
 import FileTab from './screens/FileTab.jsx'
 import Settings from './screens/Settings.jsx'
 import Later from './screens/Later.jsx'
+import HisaabCheck from './screens/HisaabCheck.jsx'
+import RecordOther from './screens/RecordOther.jsx'
+import Diff from './screens/Diff.jsx'
 
-const SCREENS = { home: Home, record: Record, saved: Saved, confirm: Confirm, ledger: Ledger, hisaab: Hisaab, file: FileTab, settings: Settings, later: Later }
+const SCREENS = { home: Home, record: Record, saved: Saved, confirm: Confirm, ledger: Ledger, hisaab: Hisaab, file: FileTab, settings: Settings, later: Later,
+  hisaabCheck: HisaabCheck, recordOther: RecordOther, diff: Diff }
 
 export default function App() {
   const [profile, setProfileState] = useState(undefined) // undefined = loading

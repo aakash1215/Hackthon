@@ -101,7 +101,7 @@ export default function Hisaab() {
       )}
 
       <div className="bottom-actions" style={{ paddingTop: 4 }}>
-        <Btn icon={Mic} onClick={() => go('later', { title: 'ठेकेदार का हिसाब जाँचें' })}>ठेकेदार का हिसाब जाँचें</Btn>
+        <Btn icon={Mic} onClick={() => go('hisaabCheck')}>ठेकेदार का हिसाब जाँचें</Btn>
         <Btn variant="outline" icon={Volume2} onClick={() => { setWhy(true); speak(explain) }} disabled={!t}>समझाइए</Btn>
       </div>
 

@@ -17,15 +17,20 @@ from typing import Any, Literal
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from . import asr, db, events, extract, normalize, reconcile
+from . import asr, corroboration, db, events, extract, normalize, reconcile
 from .config import settings
-from .contracts import DATE_FIELDS, ENUM_FIELDS, INT_FIELDS, KIND_FIELDS, MONEY_FIELDS, TIME_FIELDS
+from .contracts import (
+    DATE_FIELDS, ENTRY_KINDS, ENUM_FIELDS, INT_FIELDS, KIND_FIELDS, MONEY_FIELDS, REPLY_INTENTS, SPAN_INT_FIELDS,
+    SPAN_MONEY_FIELDS, TIME_FIELDS,
+)
 from .rates import RateContext, load_packs
 from .wage_engine import Payment, WorkDay, compute, parse_time
 
 router = APIRouter()
-KINDS = tuple(KIND_FIELDS)
-JSON_COLS = ("asr_meta", "extraction", "reconciled", "confirmed", "linked_day_ids")
+KINDS = ENTRY_KINDS
+# Who may speak on which kind of recording. Anyone but the worker needs the notice / consent prompt first.
+SPEAKER_KIND = {"thekedar": "hisaab_statement", "coworker": "coworker_confirm"}
+JSON_COLS = ("asr_meta", "extraction", "reconciled", "confirmed", "linked_day_ids", "reply")
 _TIME_RE = re.compile(r"^\d{2}:\d{2}$")
 
 
@@ -96,6 +101,14 @@ def _coerce(kind: str, name: str, v: Any):
             raise HTTPException(422, f"BAD_AMOUNT:{name}") from e
         if n < 0:
             raise HTTPException(422, f"BAD_AMOUNT:{name}")
+        return n
+    if name in SPAN_MONEY_FIELDS or name in SPAN_INT_FIELDS:
+        try:
+            n = int(v)
+        except (TypeError, ValueError) as e:
+            raise HTTPException(422, f"BAD_NUMBER:{name}") from e
+        if not 0 <= n <= (366 if name in SPAN_INT_FIELDS else 10_000_000):
+            raise HTTPException(422, f"BAD_NUMBER:{name}")
         return n
     if name in INT_FIELDS:
         try:
@@ -243,12 +256,29 @@ def create_entry(
     lon: float | None = Form(None),
     gps_accuracy_m: float | None = Form(None),
     gps_ts: str | None = Form(None),
+    notice_played: bool = Form(False),
+    notice_lang: str | None = Form(None),
+    photo_client_sha256: str | None = Form(None),
+    consent_refused: bool = Form(False),
 ):
-    """Save and hash the original bytes first, then return. No model runs here."""
+    """Save and hash the original bytes first, then return. No model runs here.
+
+    A thekedar or co-worker recording is accepted only if the phone played the notice / consent
+    prompt first (hard rule 5): no notice, no recording.
+    """
     if kind not in KINDS:
         raise HTTPException(422, "BAD_KIND")
     if speaker not in ("worker", "thekedar", "coworker"):
         raise HTTPException(422, "BAD_SPEAKER")
+    if speaker in SPEAKER_KIND:
+        if kind != SPEAKER_KIND[speaker]:
+            raise HTTPException(422, "BAD_KIND_FOR_SPEAKER")
+        if not notice_played:
+            raise HTTPException(422, "NOTICE_REQUIRED")
+    elif kind == "coworker_confirm":
+        raise HTTPException(422, "BAD_KIND_FOR_SPEAKER")
+    if consent_refused and speaker != "thekedar":
+        raise HTTPException(422, "BAD_SPEAKER")  # a refusing co-worker is simply not recorded
     with db.read() as c:
         w = _row(c, "workers", worker_id)
         site = _site_for(c, worker_id)
@@ -272,7 +302,10 @@ def create_entry(
         if pdata:
             photo_rel = rel_dir / f"photo{_ext(photo.filename, '.jpg')}"
             (settings.data_dir / photo_rel).write_bytes(pdata)
-            photo_rec = {"path": photo_rel.as_posix(), "sha256": _sha(pdata)}
+            psha = _sha(pdata)
+            pmatch = None if not photo_client_sha256 else photo_client_sha256.strip().lower() == psha
+            photo_rec = {"path": photo_rel.as_posix(), "sha256": psha, "hash_match": pmatch,
+                         "kind": "payment_proof" if kind == "payment" else "photo"}
 
     hash_match = None if not client_sha256 else client_sha256.strip().lower() == audio_sha
     gps_saved = bool(w["gps_opt_in"]) and lat is not None and lon is not None  # GPS is opt-in only
@@ -283,28 +316,42 @@ def create_entry(
     with db.write() as c:
         c.execute(
             "INSERT INTO entries (id, worker_id, site_id, kind, speaker, language, audio_path, audio_sha256, "
-            "client_sha256, hash_match, client_ts, server_ts, lat, lon, gps_accuracy_m, gps_ts, status) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'saved')",
+            "client_sha256, hash_match, client_ts, server_ts, lat, lon, gps_accuracy_m, gps_ts, status, "
+            "notice_played, notice_lang, error) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'saved', ?, ?, ?)",
             (entry_id, worker_id, site["id"] if site else None, kind, speaker, lang,
              audio_rel.as_posix(), audio_sha, client_sha256, None if hash_match is None else int(hash_match),
              client_ts, server_ts, lat if gps_saved else None, lon if gps_saved else None,
-             gps_accuracy_m if gps_saved else None, gps_ts if gps_saved else None),
+             gps_accuracy_m if gps_saved else None, gps_ts if gps_saved else None,
+             int(bool(notice_played)), notice_lang if notice_played else None,
+             "CONSENT_REFUSED" if consent_refused else None),
         )
         events.append(c, "AUDIO_SAVED", {"entry_id": entry_id, "audio_sha256": audio_sha, "bytes": len(data),
-                                         "client_sha256": client_sha256, "hash_match": hash_match},
+                                         "client_sha256": client_sha256, "hash_match": hash_match,
+                                         "kind": kind, "speaker": speaker},
                       worker_id, client_ts)
+        if speaker == "thekedar":
+            events.append(c, "THEKEDAR_RECORDED", {"entry_id": entry_id, "audio_sha256": audio_sha,
+                                                   "notice_played": True, "notice_lang": notice_lang,
+                                                   "consent_refused": consent_refused},
+                          worker_id, client_ts)
+        elif speaker == "coworker":
+            events.append(c, "WITNESS_RECORDED", {"entry_id": entry_id, "audio_sha256": audio_sha,
+                                                  "consent_prompt_shown": True}, worker_id, client_ts)
         if hash_match is False:
             events.append(c, "HASH_MISMATCH", {"entry_id": entry_id, "server_sha256": audio_sha,
                                                "client_sha256": client_sha256}, worker_id, client_ts)
         if photo_rec:
             pid = uuid.uuid4().hex[:12]
             c.execute("INSERT INTO evidence (id, worker_id, entry_id, kind, path, sha256, consent, lat, lon, "
-                      "gps_accuracy_m, taken_ts, created_at) VALUES (?,?,?, 'photo', ?,?,1,?,?,?,?,?)",
-                      (pid, worker_id, entry_id, photo_rec["path"], photo_rec["sha256"],
+                      "gps_accuracy_m, taken_ts, client_sha256, hash_match, created_at) "
+                      "VALUES (?,?,?,?,?,?,1,?,?,?,?,?,?,?)",
+                      (pid, worker_id, entry_id, photo_rec["kind"], photo_rec["path"], photo_rec["sha256"],
                        lat if gps_saved else None, lon if gps_saved else None,
-                       gps_accuracy_m if gps_saved else None, client_ts, server_ts))
-            events.append(c, "PHOTO_SAVED", {"entry_id": entry_id, "evidence_id": pid,
-                                             "sha256": photo_rec["sha256"]}, worker_id, client_ts)
+                       gps_accuracy_m if gps_saved else None, client_ts, photo_client_sha256,
+                       None if photo_rec["hash_match"] is None else int(photo_rec["hash_match"]), server_ts))
+            events.append(c, "PHOTO_SAVED", {"entry_id": entry_id, "evidence_id": pid, "kind": photo_rec["kind"],
+                                             "sha256": photo_rec["sha256"], "hash_match": photo_rec["hash_match"]},
+                          worker_id, client_ts)
         if gps_saved:
             events.append(c, "GPS_CAPTURED", {"entry_id": entry_id, "lat": lat, "lon": lon,
                                               "accuracy_m": gps_accuracy_m}, worker_id, gps_ts)
@@ -345,6 +392,10 @@ def process_entry(entry_id: str):
         site = _site_for(c, e["worker_id"])
     if e["status"] == "confirmed":
         raise HTTPException(409, "ALREADY_CONFIRMED")
+    if e["status"] == "deleted":
+        raise HTTPException(409, "DELETED")  # a tombstone stays purged
+    if e.get("error") == "CONSENT_REFUSED":
+        raise HTTPException(409, "CONSENT_REFUSED")  # only the notice was kept; nothing to transcribe
 
     if not e["audio_path"]:
         raise HTTPException(409, "NO_AUDIO")
@@ -378,16 +429,24 @@ def process_entry(entry_id: str):
             llm_error = ex.args[0]
 
     rec_out = reconcile.reconcile(e["kind"], llm, norm, transcript, rec, segments, defaults)
+    reply = None
+    if e["speaker"] == "thekedar" and transcript.strip() and not llm_error:
+        try:
+            reply = _ground_reply(extract.extract_reply(transcript), transcript)
+        except extract.LLMUnavailable:
+            reply = None  # the statement numbers still stand; the worker picks the intent
     new_status = "saved" if llm_error else "processed"
     with db.write() as c:
         c.execute(
-            "UPDATE entries SET status=?, transcript=?, asr_meta=?, extraction=?, reconciled=?, error=? WHERE id=?",
+            "UPDATE entries SET status=?, transcript=?, asr_meta=?, extraction=?, reconciled=?, error=?, reply=? "
+            "WHERE id=?",
             (new_status, transcript,
              json.dumps({"language": asr_res["language"], "duration": asr_res["duration"],
                          "segments": [{k: v for k, v in s.items() if k != "words"} for s in segments]},
                         ensure_ascii=False),
              json.dumps(llm, ensure_ascii=False) if llm is not None else None,
-             json.dumps(rec_out, ensure_ascii=False), llm_error, entry_id),
+             json.dumps(rec_out, ensure_ascii=False), llm_error,
+             json.dumps(reply, ensure_ascii=False) if reply else None, entry_id),
         )
         events.append(c, "ENTRY_PROCESSED", {"entry_id": entry_id, "transcript_sha256": _sha(transcript.encode()),
                                              "llm_error": llm_error, "tier": "server"}, e["worker_id"])
@@ -400,7 +459,22 @@ def process_entry(entry_id: str):
         "summary": rec_out["summary"],
         "error": llm_error,
         "tier": "server",
+        "reply": reply,
     }
+
+
+def _ground_reply(raw: dict, transcript: str) -> dict:
+    """thekedar_reply output with every quoted field grounded (else null); intent is a classification only."""
+    out = {"intent": raw.get("intent") if raw.get("intent") in REPLY_INTENTS else "other",
+           "confidence": raw.get("confidence") if raw.get("confidence") in ("high", "low") else "low"}
+    for name in ("amount", "date", "days"):
+        f = raw.get(name) or {}
+        ev = f.get("evidence")
+        ok = f.get("value") not in (None, "") and reconcile._grounded(ev, transcript)
+        out[name] = {"value": f.get("value") if ok else None, "evidence": ev if ok else None}
+        if name in ("amount", "days") and ok:
+            out[name]["value"] = normalize.parse_money(ev)  # the number is read from the quote by code
+    return out
 
 
 class ConfirmIn(BaseModel):
@@ -414,24 +488,64 @@ def confirm_entry(entry_id: str, body: ConfirmIn):
     if e["status"] != "processed":
         raise HTTPException(409, "NOT_PROCESSED")
     kind = e["kind"]
-    confirmed = {name: _coerce(kind, name, v) for name, v in body.fields.items()}
+    fields = dict(body.fields)
+    extra: dict[str, Any] = {}
+    if kind == "hisaab_statement" and e["speaker"] == "thekedar":
+        intent = fields.pop("intent", None)
+        if intent not in (None, "") and intent not in REPLY_INTENTS:
+            raise HTTPException(422, "BAD_ENUM:intent")
+        extra["intent"] = intent or None
+    if kind == "coworker_confirm":
+        if fields.pop("consent", None) is not True:
+            raise HTTPException(422, "CONSENT_REQUIRED")  # no consent: the witness entry cannot count
+        dates = fields.pop("dates", None)
+        if not isinstance(dates, list) or not dates:
+            raise HTTPException(422, "DATES_REQUIRED")
+        try:
+            dates = sorted({date.fromisoformat(str(d)).isoformat() for d in dates})
+        except ValueError as ex:
+            raise HTTPException(422, "BAD_DATE:dates") from ex
+        if dates[-1] > date.today().isoformat():
+            raise HTTPException(422, "FUTURE_DATE:dates")
+        extra["dates"], extra["consent"] = dates, True
+    confirmed = {name: _coerce(kind, name, v) for name, v in fields.items()}
+    confirmed.update(extra)
     reconciled = (e.get("reconciled") or {}).get("fields", {})
     now = _now()
+    witness = kind == "coworker_confirm"
     with db.write() as c:
-        c.execute("UPDATE entries SET status='confirmed', confirmed=?, confirmed_at=? WHERE id=?",
-                  (json.dumps(confirmed, ensure_ascii=False), now, entry_id))
-        events.append(c, "ENTRY_CONFIRMED", {"entry_id": entry_id, "kind": kind, "confirmed": confirmed},
-                      e["worker_id"])
+        c.execute("UPDATE entries SET status='confirmed', confirmed=?, confirmed_at=?, linked_day_ids=? WHERE id=?",
+                  (json.dumps(confirmed, ensure_ascii=False), now,
+                   json.dumps(extra.get("dates")) if witness else None, entry_id))
+        # A witness's name stays out of the chain payload (it can be redacted on export); the chain
+        # commits to it through the hash of the confirmed content.
+        payload = {"entry_id": entry_id, "kind": kind,
+                   **({"confirmed_sha256": _sha(events.canonical(confirmed)), "dates": extra["dates"]}
+                      if witness else {"confirmed": confirmed})}
+        events.append(c, "ENTRY_CONFIRMED", payload, e["worker_id"])
         for name, v in confirmed.items():
             before = reconciled.get(name, {}).get("value")
-            if before != v:
+            if name in reconciled and before != v and not witness:
                 events.append(c, "FIELD_EDITED", {"entry_id": entry_id, "field": name, "from": before, "to": v},
                               e["worker_id"])
         if kind == "payment":
             events.append(c, "PAYMENT_CONFIRMED", {"entry_id": entry_id, "amount": confirmed.get("amount_paid")},
                           e["worker_id"])
+        if witness:
+            events.append(c, "COWORKER_CONFIRMED", {"entry_id": entry_id, "dates": extra["dates"],
+                                                    "audio_sha256": e["audio_sha256"]}, e["worker_id"])
+        if (kind == "hisaab_statement" and e["speaker"] == "thekedar" and extra.get("intent") == "promise_to_pay"
+                and confirmed.get("balance_promised") is not None):
+            pid = uuid.uuid4().hex[:12]
+            c.execute("INSERT INTO promises (id, worker_id, source_entry_id, source, source_ref, amount, due_date, "
+                      "date_status, confirmed, created_at) VALUES (?,?,?, 'recording', ?,?,?,?,1,?)",
+                      (pid, e["worker_id"], entry_id, e["audio_sha256"], confirmed["balance_promised"],
+                       confirmed.get("promised_date"), "stated" if confirmed.get("promised_date") else None, now))
+            events.append(c, "PROMISE_LOGGED", {"promise_id": pid, "entry_id": entry_id, "source": "recording",
+                                                "amount": confirmed["balance_promised"],
+                                                "due": confirmed.get("promised_date")}, e["worker_id"])
         head = events.head(c)
-    return {"entry_id": entry_id, "status": "confirmed", "chain_head": head}
+    return {"entry_id": entry_id, "kind": kind, "status": "confirmed", "chain_head": head}
 
 
 @router.delete("/api/entries/{entry_id}")
@@ -457,7 +571,8 @@ def copy_yesterday(worker_id: str = Form(...), client_ts: str = Form(...)):
     except ValueError as e:
         raise HTTPException(422, "BAD_CLIENT_TS") from e
     with db.read() as c:
-        if not _row(c, "workers", worker_id):
+        worker = _row(c, "workers", worker_id)
+        if not worker:
             raise HTTPException(404, "WORKER_NOT_FOUND")
         prev = [r for r in _confirmed(c, worker_id, None, today.isoformat()) if r["kind"] == "workday"]
         site = _site_for(c, worker_id)
@@ -486,9 +601,9 @@ def copy_yesterday(worker_id: str = Form(...), client_ts: str = Form(...)):
     with db.write() as c:
         c.execute(
             "INSERT INTO entries (id, worker_id, site_id, kind, speaker, language, audio_path, audio_sha256, "
-            "client_ts, server_ts, status, reconciled, error) VALUES (?,?,?, 'workday', 'worker', 'mr', '', ?, ?, ?, "
+            "client_ts, server_ts, status, reconciled, error) VALUES (?,?,?, 'workday', 'worker', ?, '', ?, ?, ?, "
             "'processed', ?, NULL)",
-            (entry_id, worker_id, site["id"] if site else None, template_sha, client_ts, server_ts,
+            (entry_id, worker_id, site["id"] if site else None, worker["language"], template_sha, client_ts, server_ts,
              json.dumps(reconciled, ensure_ascii=False)),
         )
         events.append(c, "ENTRY_COPIED_YESTERDAY", {"entry_id": entry_id, "from_day": src.get("work_date"),
@@ -519,13 +634,58 @@ def ledger(worker_id: str, date_from: str | None = None, date_to: str | None = N
         if not _row(c, "workers", worker_id):
             raise HTTPException(404, "WORKER_NOT_FOUND")
         rows = _confirmed(c, worker_id, date_from, date_to)
+        levels = day_levels(c, worker_id, [r["day"] for r in rows if r["kind"] == "workday" and r["day"]])
+        proofs = {r["entry_id"]: r["n"] for r in c.execute(
+            "SELECT entry_id, COUNT(*) n FROM evidence WHERE worker_id=? AND kind='payment_proof' GROUP BY entry_id",
+            (worker_id,))}
         h = events.head(c)
     days = [{"entry_id": r["id"], "date": r["day"], **{k: r["confirmed"].get(k) for k in
-             ("start_time", "end_time", "break_minutes", "worked")}}
+             ("start_time", "end_time", "break_minutes", "worked")},
+             "corroboration": levels.get(r["day"])}
             for r in rows if r["kind"] == "workday"]
     payments = [{"entry_id": r["id"], "date": r["day"], "amount": r["confirmed"].get("amount_paid"),
-                 "mode": r["confirmed"].get("payment_mode")} for r in rows if r["kind"] == "payment"]
-    return {"worker_id": worker_id, "days": days, "payments": payments, "chain_head": h}
+                 "mode": r["confirmed"].get("payment_mode"), "proof_photos": proofs.get(r["id"], 0)}
+                for r in rows if r["kind"] == "payment"]
+    return {"worker_id": worker_id, "days": days, "payments": payments, "chain_head": h,
+            "corroboration_note": corroboration.DISCLAIMER}
+
+
+def _day_of(ts: str | None) -> str | None:
+    """Calendar date of an ISO timestamp as the phone wrote it (device time, labelled as such)."""
+    if not ts:
+        return None
+    try:
+        return date.fromisoformat(ts[:10]).isoformat()
+    except ValueError:
+        return None
+
+
+def day_levels(c, worker_id: str, days: list[str]) -> dict[str, dict]:
+    """Collect the corroboration inputs from the DB and run the deterministic rules (corroboration.py)."""
+    if not days:
+        return {}
+    site = _site_for(c, worker_id)
+    site_pt = {"lat": site["site_lat"], "lon": site["site_lon"]} if site and site.get("site_lat") is not None else None
+    photos = [{"day": _day_of(r["taken_ts"] or r["created_at"]), "lat": r["lat"], "lon": r["lon"],
+               "acc": r["gps_accuracy_m"], "ref": r["sha256"]}
+              for r in c.execute("SELECT * FROM evidence WHERE worker_id=? AND kind IN ('photo','site_board')",
+                                 (worker_id,))]
+    fixes, coworker, thekedar = [], [], []
+    for r in c.execute("SELECT * FROM entries WHERE worker_id=? AND status='confirmed'", (worker_id,)):
+        r = _decode(dict(r))
+        if r["lat"] is not None:
+            fixes.append({"day": _day_of(r["gps_ts"] or r["client_ts"]), "lat": r["lat"], "lon": r["lon"],
+                          "acc": r["gps_accuracy_m"], "ref": r["audio_sha256"]})
+        cf = r["confirmed"] or {}
+        if r["kind"] == "coworker_confirm" and cf.get("consent"):
+            coworker.append({"dates": cf.get("dates") or [], "ref": r["audio_sha256"]})
+        elif r["kind"] == "hisaab_statement" and r["speaker"] == "thekedar":
+            thekedar.append({"rec_day": _day_of(r["client_ts"] or r["server_ts"]),
+                             "days_counted": cf.get("days_counted"), "intent": cf.get("intent"),
+                             "ref": r["audio_sha256"]})
+    return corroboration.compute_levels(days, site=site_pt, photos=[p for p in photos if p["day"]],
+                                        fixes=[f for f in fixes if f["day"]], coworker=coworker,
+                                        thekedar=[t for t in thekedar if t["rec_day"]])
 
 
 @router.get("/api/hisaab")

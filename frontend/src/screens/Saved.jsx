@@ -10,6 +10,14 @@ import { shortCode } from '../lib/hash.js'
 import { flush } from '../lib/sync.js'
 import { readbackText } from './Confirm.jsx'
 
+const UNDERSTAND = {
+  workday: 'समय, ठेकेदार, साथी पहचान रहे हैं (1–2 मिनट)',
+  payment: 'रक़म, तारीख, देने वाला पहचान रहे हैं (1–2 मिनट)',
+  hisaab_statement: 'दिन, दर, कटौती, दी गई रक़म पहचान रहे हैं (1–2 मिनट)',
+  coworker_confirm: 'साथी का नाम, दिन, साइट पहचान रहे हैं (1–2 मिनट)',
+}
+const SAVED_TITLE = { hisaab_statement: 'हिसाब की बात सुरक्षित', coworker_confirm: 'गवाही सुरक्षित' }
+
 export default function Saved({ localId }) {
   const { sync, reset, replace } = useApp()
   const [rec, setRec] = useState(null)
@@ -26,7 +34,7 @@ export default function Saved({ localId }) {
   }, [localId])
 
   useEffect(() => {
-    if (!rec?.serverId || started.current || rec.status === 'hash_mismatch') return
+    if (!rec?.serverId || started.current || rec.status === 'hash_mismatch' || rec.consentRefused) return
     if (rec.status === 'processed') { setProc({ state: 'done' }); return }
     started.current = true
     setProc({ state: 'running' })
@@ -52,7 +60,7 @@ export default function Saved({ localId }) {
     <div className="screen">
       <TopBar speakText={`आवाज़ सुरक्षित। सेव कोड ${shortCode(rec.sha256, 2)}`} />
       <div className="big-check"><span><Check size={34} strokeWidth={3} /></span></div>
-      <h1 className="saved-title">आवाज़ सुरक्षित</h1>
+      <h1 className="saved-title">{SAVED_TITLE[rec.kind] || 'आवाज़ सुरक्षित'}</h1>
       <div className="center muted">{dayMonth(rec.createdAt.slice(0, 10))} · {rec.durationS || 0} सेकंड</div>
       <div className="code-pill"><Fingerprint size={22} /> सेव कोड&nbsp; {shortCode(rec.sha256, 2)}</div>
       {rec.gps && <div className="center" style={{ marginTop: -8, marginBottom: 12 }}><span className="gps-chip"><MapPin size={16} /> {rec.gps.lat.toFixed(5)}, {rec.gps.lon.toFixed(5)}</span></div>}
@@ -69,7 +77,7 @@ export default function Saved({ localId }) {
             <div className="d">
               {!uploaded ? (offline ? 'हब से जुड़ने पर समझेंगे' : 'हब पर भेज रहे हैं…')
                 : proc.state === 'error' ? `अभी समझ नहीं पाए (${proc.code}) — बाद में फिर कोशिश होगी`
-                  : 'समय, ठेकेदार, साथी पहचान रहे हैं (1–2 मिनट)'}
+                  : UNDERSTAND[rec.kind] || UNDERSTAND.workday}
             </div>
           </div>
         </div>
@@ -79,7 +87,11 @@ export default function Saved({ localId }) {
         </div>
       </div>
 
-      {rec.status === 'hash_mismatch' ? (
+      {rec.consentRefused ? (
+        <div className="info-row" style={{ marginTop: 12, color: 'var(--text)' }}>
+          <ShieldCheck size={24} color="var(--brand)" /> मना किया गया — सिर्फ़ रिकॉर्डिंग की सूचना सेव हुई, बातचीत नहीं। इसे समझा या पक्का नहीं किया जाएगा।
+        </div>
+      ) : rec.status === 'hash_mismatch' ? (
         <div className="info-row" style={{ marginTop: 12, background: 'var(--urgent-bg)', color: 'var(--urgent)' }}>
           <CircleAlert size={22} /> हब पर पहुँची फ़ाइल का कोड मेल नहीं खाया। यह दर्ज कर लिया गया है — यूनियन/सहायक को बताएँ।
         </div>

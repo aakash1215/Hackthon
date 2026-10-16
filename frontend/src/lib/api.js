@@ -69,3 +69,14 @@ export function copyYesterday(workerId, clientTs) {
   f.append('client_ts', clientTs)
   return apiForm('/api/entries/copy-yesterday', f)
 }
+
+// --- P3: hisaab check, differences, evidence, coach, export -------------------------------------
+const q = (workerId) => `worker_id=${encodeURIComponent(workerId)}`
+export const manualStatement = (workerId, clientTs) =>
+  apiJson('POST', '/api/entries/manual', { worker_id: workerId, kind: 'hisaab_statement', client_ts: clientTs })
+export const differences = (id) => apiJson('GET', `/api/entries/${id}/differences`)
+export const statements = (workerId) => apiJson('GET', `/api/statements?${q(workerId)}`)
+export const evidenceList = (workerId, kind) => apiJson('GET', `/api/evidence?${q(workerId)}${kind ? `&kind=${kind}` : ''}`)
+export const coach = (workerId) => apiJson('GET', `/api/coach?${q(workerId)}`)
+// The packet build renders a PDF on the hub; allow it time.
+export const exportPacket = (body) => apiJson('POST', '/api/export', body, { timeoutMs: 120000 })

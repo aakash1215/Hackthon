@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Apna Hisaab — evidence file {{ period[0] }} to {{ period[1] }}</title>
+<style>
+{{ font_face | safe }}
+:root { --brand:#6c3d02; --text:#14172b; --text2:#5a6072; --border:#d9dce6; --ok:#15803d; --ask:#a15c07; --urgent:#c62828; --soft:#f6f7fb; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: 'Noto Sans Devanagari', sans-serif; color: var(--text); font-size: 10.5pt; line-height: 1.45; background: #fff; }
+main { max-width: 190mm; margin: 0 auto; padding: 4mm; }
+h1 { font-size: 18pt; margin: 0 0 2mm; color: var(--brand); }
+h2 { font-size: 13pt; margin: 7mm 0 2mm; padding-bottom: 1mm; border-bottom: 2px solid var(--brand); break-after: avoid; }
+h3 { font-size: 11pt; margin: 4mm 0 1mm; break-after: avoid; }
+.en { color: var(--text2); }
+.small { font-size: 8.5pt; color: var(--text2); }
+.mono { font-family: Consolas, 'Courier New', monospace; font-size: 8pt; word-break: break-all; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0; font-size: 9pt; table-layout: auto; }
+th, td { border: 1px solid var(--border); padding: 1.2mm 1.6mm; text-align: left; vertical-align: top; }
+th { background: var(--soft); font-weight: 700; }
+tr { break-inside: avoid; }
+.num { text-align: right; white-space: nowrap; }
+.box { border: 1px solid var(--border); border-radius: 3mm; padding: 3mm; margin: 2mm 0; break-inside: avoid; }
+.box.brand { border: 2px solid var(--brand); }
+.box.warn { border-color: var(--ask); background: #fff8ea; }
+.kv { display: grid; grid-template-columns: 45mm 1fr; gap: 1mm 4mm; }
+.kv div:nth-child(odd) { color: var(--text2); }
+.big { font-size: 20pt; font-weight: 700; }
+.lv { display: inline-block; padding: 0 2mm; border-radius: 2mm; font-weight: 700; font-size: 8.5pt; white-space: nowrap; }
+.lv1 { background: #eceef4; color: var(--text2); } .lv2 { background: #eef0fa; color: #2e3a8c; } .lv3 { background: #e6f2ea; color: var(--ok); }
+.flag { color: var(--urgent); font-weight: 700; font-size: 8.5pt; }
+.urgent { color: var(--urgent); } .ask { color: var(--ask); }
+.photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; }
+.photo { border: 1px solid var(--border); border-radius: 2mm; padding: 2mm; break-inside: avoid; font-size: 8pt; }
+.photo img { width: 100%; height: 40mm; object-fit: cover; border-radius: 1mm; display: block; margin-bottom: 1mm; }
+.quote { background: var(--soft); border-left: 3px solid var(--brand); padding: 2mm 3mm; margin: 1mm 0; }
+.thumb { width: 22mm; height: 22mm; border: 1px solid var(--text); display: inline-block; vertical-align: middle; margin-right: 6mm; }
+.sign { display: flex; gap: 10mm; align-items: flex-end; margin-top: 6mm; }
+.page-break { break-before: page; }
+.watermark { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 0; }
+.watermark span { transform: rotate(-32deg); font-size: 46pt; font-weight: 700; color: rgba(198, 40, 40, 0.10); white-space: nowrap; }
+.banner { background: #fdecec; color: var(--urgent); font-weight: 700; text-align: center; padding: 1.5mm; border-radius: 2mm; margin-bottom: 3mm; }
+main > * { position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+{% if demo %}<div class="watermark"><span>SYNTHETIC DEMO DATA</span></div>{% endif %}
+<main>
+{% if demo %}<div class="banner">SYNTHETIC DEMO DATA · काल्पनिक डेमो डेटा — no real person</div>{% endif %}
+{% set t = engine.totals if engine.ok else None %}
+{% set contractor = (parties | selectattr('role', 'in', ['contractor','mukadam','subcontractor']) | list) %}
+<h1>अपना हिसाब · साक्ष्य फ़ाइल <span class="en">/ Apna Hisaab · Evidence file</span></h1>
+<div class="small">Period {{ period[0] }} → {{ period[1] }} · generated {{ generated }} · export {{ export_id }} ·
+  record code (chain head) <b>{{ chain_head.short or '—' }}</b> · chain check: {% if verify.ok %}<span style="color:var(--ok)">intact ({{ verify.events }} events)</span>{% else %}<span class="urgent">BROKEN at event {{ verify.broken_at_seq }}</span>{% endif %}</div>
+
+<!-- 1. Dues statement -->
+<h2>1. बकाया विवरण <span class="en">/ Dues statement (estimate)</span></h2>
+<div class="box brand">
+  <div class="kv">
+    <div>कामगार / Worker</div><div><b>{{ worker.display_name or '—' }}</b> · {{ {'unskilled':'unskilled / अकुशल','semi_skilled':'semi-skilled / अर्ध-कुशल','skilled':'skilled / कुशल','highly_skilled':'highly skilled / अति-कुशल'}.get(worker.category, 'category not confirmed') }}</div>
+    <div>ठेकेदार / Contractor (as stated)</div><div>{% for p in contractor %}{{ p.name or '—' }}{% if p.phone %} · {{ p.phone }}{% endif %} ({{ p.source }}){% if not loop.last %}; {% endif %}{% else %}not stated{% endfor %}</div>
+    <div>बिल्डर / Principal employer</div><div>{{ site.principal_employer or 'not stated' }}{% if site.maharera_no %} · MahaRERA {{ site.maharera_no }}{% endif %}</div>
+    <div>साइट / Site</div><div>{{ site.name or '—' }}{% if site.landmark %}, {{ site.landmark }}{% endif %}{% if site.city %}, {{ site.city }}{% endif %} · {{ site.state or '' }} · sphere {{ site.sphere or '?' }} · zone {{ site.zone or '?' }}{% if not site.zone_confirmed %} (not confirmed){% endif %}</div>
+    <div>अवधि / Period</div><div>{{ period[0] }} → {{ period[1] }} · {{ days | length }} confirmed workdays</div>
+    {% if provenance %}<div>दर का आधार / Rate basis</div><div>{{ provenance.issuer }} · notification {{ provenance.notification_no }} dated {{ provenance.notification_date }} · valid {{ provenance.valid_from }} → {{ provenance.valid_to }} · verification: <b>{{ provenance.verification_status }}</b></div>{% endif %}
+  </div>
+  {% if t %}
+  <table style="margin-top:3mm">
+    <tr><th>Statutory minimum due (estimate) / न्यूनतम दर से बनता</th><td class="num">₹{{ t.due_statutory }}</td></tr>
+    <tr><th>Paid (worker's record) / मिला</th><td class="num">₹{{ t.paid_total }}</td></tr>
+    <tr><th>Shortfall estimate / बाकी (अनुमान)</th><td class="num"><span class="big">₹{{ t.claim_estimate }}</span></td></tr>
+  </table>
+  {% else %}
+  <p class="ask">No amount computed: {% for e in engine.errors %}{{ e.code if e.code is defined else e }}{% if not loop.last %}, {% endif %}{% endfor %}. Errors are shown as needs, never guessed.</p>
+  {% endif %}
+  <p class="small">Prepared from the worker's own records; computed by fixed rules; not legal advice; not verified by any authority. All amounts are estimates. / यह कामगार के अपने रिकॉर्ड से बना है; तय नियमों से गिना गया; क़ानूनी सलाह नहीं; किसी अधिकारी ने जाँचा नहीं। सब रक़म अनुमान हैं।</p>
+</div>
+
+<!-- 2. Day-by-day -->
+<h2>2. दिन-वार रिकॉर्ड <span class="en">/ Day-by-day record (muster-roll style)</span></h2>
+<p class="small">Corroboration: {{ levels_note.en }} L1 = worker's record · L2 = + on-site evidence (photo / GPS at site that day) · L3 = + another person (co-worker or thekedar).</p>
+<table>
+  <tr><th>Date</th><th>Start–end (break min)</th><th class="num">Hours</th><th class="num">OT</th><th class="num">Due (min. wage)</th><th class="num">Paid</th><th>Corroboration</th><th>Evidence IDs · chain seq</th><th>Confirmed · changed</th></tr>
+  {% for d in days %}
+  <tr>
+    <td style="white-space:nowrap">{{ d.date }}</td><td>{{ d.start or '—' }}–{{ d.end or '—' }} ({{ d.break if d.break is not none else '?' }})</td>
+    <td class="num">{{ d.hours or '—' }}</td><td class="num">{{ d.ot or '—' }}</td><td class="num">{{ d.due or '—' }}</td>
+    <td class="num">{{ d.paid or '' }}{% if d.mode %}<br><span class="small">{{ d.mode }}</span>{% endif %}</td>
+    <td><span class="lv lv{{ d.level }}">L{{ d.level }}</span><br><span class="small">{% for s in d.signals %}{{ signal_en[s] }}{% if not loop.last %}, {% endif %}{% endfor %}</span>{% if 'THEKEDAR_DISPUTES' in d.flags %}<br><span class="flag">thekedar disputes</span>{% endif %}</td>
+    <td class="mono">{{ d.evidence_ids | join(' ') }}<br>#{{ d.seqs | join(', #') }}</td>
+    <td class="small">{{ (d.confirmed_at or '')[:16] | replace('T', ' ') }}{% if d.copied %}<br>“same as yesterday”{% endif %}{% if d.edits %}<br>changed: {{ d.edits | join(', ') }}{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="9">No confirmed workdays in this period.</td></tr>
+  {% endfor %}
+</table>
+{% if payments %}
+<h3>Payments recorded / पैसा मिला</h3>
+<table>
+  <tr><th>Date</th><th class="num">Amount</th><th>Mode</th><th>Payer (as stated)</th><th>Deductions said</th><th>Proof photos</th><th>Audio SHA-256</th></tr>
+  {% for p in payments %}
+  <tr><td>{{ p.date }}</td><td class="num">₹{{ p.amount }}</td><td>{{ p.mode or '—' }}</td><td>{{ p.payer or '—' }}</td><td>{{ p.deductions or '—' }}</td>
+    <td class="mono">{% for ph in p.proofs %}{{ ph.sha256[:12] }} ({{ ph.kind }}){% if not loop.last %}<br>{% endif %}{% else %}—{% endfor %}</td>
+    <td class="mono">{{ p.sha[:16] }}…</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+<!-- 3. Computation -->
+<h2>3. गणना <span class="en">/ Computation (deterministic engine)</span></h2>
+{% if engine.ok %}
+<p>Per day: daily minimum = monthly rate ÷ {{ provenance.daily_divisor if provenance else 26 }}; hours = (end − start) − break; normal = min(hours, {{ provenance.normal_hours if provenance else 8 }}); OT = hours above normal at 2× the hourly rate. Exact rational arithmetic; rounded only for display.</p>
+{% set h = engine.form_ii_heads %}
+<table>
+  <tr><th>Form II head (draft central form)</th><th class="num">Estimate</th></tr>
+  <tr><td>3(a) Paid below minimum wage</td><td class="num">₹{{ h['3a_below_minimum'] }}</td></tr>
+  <tr><td>3(c) Overtime unpaid</td><td class="num">₹{{ h['3c_overtime_unpaid'] }}</td></tr>
+  <tr><td>3(d) Days not paid at all {% if h['3d_unpaid_dates'] %}({{ h['3d_unpaid_dates'] | join(', ') }}){% endif %}</td><td class="num">₹{{ h['3d_days_unpaid'] }}</td></tr>
+  <tr><td>3(e) Deductions reported by the worker</td><td class="num">₹{{ h['3e_deductions_total'] }}</td></tr>
+</table>
+{% if engine.assumptions %}<p class="small"><b>Assumptions:</b> {{ engine.assumptions | join(' ') }}</p>{% endif %}
+{% endif %}
+<p class="small"><b>Not computed (authority decides):</b> {% for n in engine.not_computed %}{{ n.head }} {{ n.label }}{% if not loop.last %}; {% endif %}{% endfor %}.
+{% if provenance %} Rate pack {{ provenance.pack_id }} · SHA-256 <span class="mono">{{ provenance.pack_sha256 }}</span> · conversion {{ provenance.conversion_status }}.{% endif %}</p>
+
+<!-- 4. Thekedar's own words -->
+<h2 class="page-break">4. ठेकेदार के अपने शब्द <span class="en">/ The thekedar's own words</span></h2>
+<p class="small">Recordings were made only after an automatic, unskippable recording notice. Transcripts are machine transcription (open-weight ASR) of the original audio, shown verbatim; every number below was confirmed by the worker.</p>
+{% for w in thekedar_words %}
+{% set s = w.entry %}
+<div class="box">
+  <b>Recording {{ (s.client_ts or s.server_ts)[:16] }}</b> (device time) · notice played: {{ 'yes' if s.notice_played else 'NO' }}{% if s.notice_lang %} ({{ s.notice_lang }}){% endif %} · audio SHA-256 <span class="mono">{{ s.audio_sha256 }}</span>
+  {% if s.transcript %}<div class="quote">“{{ s.transcript }}”</div>{% endif %}
+  <div class="small">Worker-confirmed reading: {% for k, v in (s.confirmed or {}).items() if v is not none and k != 'intent' %}{{ k }} = {{ v }}{% if not loop.last %}; {% endif %}{% endfor %}{% if w.intent %} · stance: <b>{{ intent_en.get(w.intent, w.intent) }} / {{ intent_hi.get(w.intent, w.intent) }}</b>{% endif %}</div>
+  {% if w.diff['items'] %}
+  <table>
+    <tr><th>Difference</th><th class="num">Thekedar</th><th class="num">Worker's record</th></tr>
+    {% for it in w.diff['items'] %}<tr><td class="{{ it.severity }}">{{ diff_label[it.code][1] }} / {{ diff_label[it.code][0] }}</td><td class="num">{{ it.thekedar }}</td><td class="num">{{ it.record if it.record is not none else 'not in record' }}{% if it.unit == 'hours' %} h{% endif %}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% else %}
+<p class="small">No thekedar recording in this period.</p>
+{% endfor %}
+{% if tg %}
+<h3>Telegram messages (Telegram server timestamps, UTC)</h3>
+<table>
+  <tr><th>Telegram time</th><th>Direction</th><th>Text / transcript</th><th>Classification</th><th>SHA-256</th></tr>
+  {% for m in tg %}
+  <tr><td>{{ m.tg_date }}</td><td>{{ 'thekedar → bot' if m.direction == 'in' else 'bot → thekedar (template ' ~ (m.template_id or '') ~ ')' }}</td>
+    <td>{{ m.text or '' }}{% if m.transcript %}<br><i>voice: “{{ m.transcript }}”</i>{% endif %}</td>
+    <td>{{ (m.classification or {}).get('intent', '') if m.classification is mapping else '' }}</td><td class="mono">{{ (m.sha256 or '')[:16] }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% if promises %}
+<h3>Promises logged / वादे</h3>
+<table><tr><th>Logged</th><th class="num">Amount</th><th>When (as said)</th><th>Source</th></tr>
+{% for p in promises %}<tr><td>{{ p.created_at[:16] }}</td><td class="num">₹{{ p.amount }}</td><td>{{ p.due_date or '—' }}</td><td>{{ p.source }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+{% if worker_checks %}
+<h3>Settlement as narrated by the worker / कामगार ने बताया हिसाब</h3>
+{% for w in worker_checks %}
+<div class="box">
+  <b>{{ (w.entry.client_ts or w.entry.server_ts)[:16] }}</b> · thekedar's figure ₹{{ w.diff.thekedar_total or '—' }} vs worker's record (min. wage due) ₹{{ w.diff.record_total or '—' }}
+  {% if w.entry.transcript %}<div class="quote">“{{ w.entry.transcript }}”</div>{% endif %}
+  {% for it in w.diff['items'] %}<div class="{{ it.severity }}">• {{ diff_label[it.code][1] }}: thekedar {{ it.thekedar }} · record {{ it.record if it.record is not none else 'not in record' }}{% if it.unit == 'hours' %} h{% endif %}</div>{% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- 5. Co-workers -->
+<h2>5. साथियों की पुष्टि <span class="en">/ Co-worker confirmations</span></h2>
+{% for cw in coworkers %}
+<div class="box"><b>{{ cw.name }}</b> · consent recorded: {{ 'yes' if cw.consent else 'no' }} · days: {{ cw.dates | join(', ') }} · audio SHA-256 <span class="mono">{{ cw.sha[:24] }}…</span> (audio not included){% if cw.transcript %}<div class="quote">“{{ cw.transcript }}”</div>{% endif %}</div>
+{% else %}
+<p class="small">No co-worker confirmation in this period.</p>
+{% endfor %}
+{% if redacted %}<p class="small">Co-worker names and words are redacted in this copy at the worker's choice.</p>{% endif %}
+
+<!-- 6. Photos -->
+<h2 class="page-break">6. फ़ोटो <span class="en">/ Photos (SHA-256, device time, GPS)</span></h2>
+{% if photos %}
+<div class="photos">
+  {% for p in photos %}
+  <div class="photo">
+    {% if p.thumb %}<img src="{{ p.thumb }}" alt="">{% else %}<div class="small">(image preview unavailable)</div>{% endif %}
+    <b>{{ {'photo':'Site / work photo','payment_proof':'Payment proof','site_board':'Site board'}.get(p.kind, p.kind) }}</b><br>
+    Device time: {{ (p.taken_ts or p.created_at or '')[:16] }}<br>
+    GPS: {% if p.lat is not none %}{{ '%.5f' % p.lat }}, {{ '%.5f' % p.lon }} ±{{ p.gps_accuracy_m | int if p.gps_accuracy_m is not none else '?' }} m{% else %}not captured{% endif %}<br>
+    <span class="mono">{{ p.sha256 }}</span>{% if p.hash_match is not none %}<br>phone hash {{ 'matched' if p.hash_match else 'DID NOT MATCH' }}{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}<p class="small">No photos in this period.</p>{% endif %}
+
+<!-- 7. Statement of facts -->
+<h2>7. तथ्यों का विवरण <span class="en">/ Statement of facts (verbatim voice notes)</span></h2>
+<p>{{ worker.display_name or 'The worker' }} recorded {{ days | length }} workdays between {{ period[0] }} and {{ period[1] }} at {{ site.name or 'the site' }}{% if contractor %} for contractor {{ contractor[0].name }} (as stated){% endif %}{% if payments %}, and {{ payments | length }} payments{% endif %}. Each entry was saved and SHA-256-hashed on the phone before any processing, then confirmed by the worker field by field.</p>
+<table>
+  <tr><th>Date</th><th>Kind</th><th>Original-language transcript (machine)</th><th>Audio SHA-256</th></tr>
+  {% for tr in transcripts %}<tr><td>{{ tr.date }}</td><td>{{ tr.kind }}</td><td>{{ tr.text }}</td><td class="mono">{{ tr.sha[:16] }}…</td></tr>{% endfor %}
+</table>
+
+<!-- 8. Evidence index -->
+<h2>8. साक्ष्य सूची <span class="en">/ Evidence index</span></h2>
+<p class="small">Every file is listed with its SHA-256 in <b>manifest.json</b> inside bundle.zip; the original audio and photos are included byte-for-byte (co-worker audio excluded by default). Times marked "device time" come from the phone clock. The hash chain (chain/events.jsonl) links every event: hash = SHA-256(previous hash + event). Chain head: <span class="mono">{{ chain_head.hash or '—' }}</span>.</p>
+<p class="small">Inputs for a certificate under BSA 2023 s.63(4), Part A: device = the worker's Android phone (browser PWA) and a local hub laptop running Apna Hisaab (open-source, Apache-2.0); open-weight models (faster-whisper ASR, Qwen3 LLM via llama.cpp) only extract text and fields; all amounts are computed by deterministic code.</p>
+
+<!-- 9. Parties, where to go -->
+<h2>9. पक्ष और कहाँ जाएँ <span class="en">/ Parties and where to go</span></h2>
+<p class="small">The contractor is an employer under the Code on Wages, 2019 s.2(l); the principal employer may also be liable (OSH Code s.55; applicability varies) — verify with legal aid. Help: a construction workers' union or NGO; the District Legal Services Authority (free legal aid, LSA Act s.12(f)); the claims authority under the Code on Wages s.45 (3-year limit; group applications possible under s.45(5)).</p>
+
+<!-- 10. Declaration -->
+<h2>10. घोषणा <span class="en">/ Declaration</span></h2>
+<p>मैं घोषणा करती/करता हूँ कि ऊपर दिए गए रिकॉर्ड मेरे अपने बोले और पक्के किए हुए हैं। / I declare that the records above were spoken and confirmed by me.</p>
+<div class="sign"><span class="thumb"></span><div>Thumbprint / signature of worker<br><br>Date: ____________</div><div style="margin-left:auto">Witness (optional): ____________________</div></div>
+
+<p class="small" style="margin-top:8mm"><b>Annex — Form II field mapping:</b> Form II (draft central form; Maharashtra form pending) heads 3(a) below-minimum, 3(c) overtime, 3(d) unpaid days and 3(e) deductions are filled from section 3; worker, employer and establishment details from section 1.</p>
+</main>
+</body>
+</html>

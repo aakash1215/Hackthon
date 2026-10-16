@@ -1,13 +1,15 @@
 // Home (UI/ D1). Additions in the same style: upload-queue status in the trust chip and a
 // "phone-saved / to confirm" list (BUILD_PLAN P2 offline queue).
 import { useEffect, useState } from 'react'
-import { Banknote, Check, ChevronRight, CircleAlert, CloudUpload, History, Mic, Scale, ShieldCheck } from 'lucide-react'
+import { Banknote, Check, ChevronRight, CircleAlert, CloudUpload, History, Mic, Scale, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { TabBar, TopBar, useApp } from '../components/Ui.jsx'
 import * as api from '../lib/api.js'
 import { read, write } from '../lib/db.js'
 import { clock12, localIso, longDate, monthRange, rupees, todayIso, weekOf, weekdayShort } from '../lib/format.js'
 import { shortCode } from '../lib/hash.js'
 import { pendingRecords } from '../lib/sync.js'
+
+const KIND_LABEL = { workday: 'काम', payment: 'पैसा मिला', hisaab_statement: 'हिसाब', thekedar: 'ठेकेदार की बात', coworker_confirm: 'साथी की गवाही' }
 
 export default function Home() {
   const { profile, sync, go, toast } = useApp()
@@ -95,10 +97,14 @@ export default function Home() {
         <button className="action-card" onClick={() => go('record', { kind: 'payment' })}>
           <span className="icon-bubble cream"><Banknote size={20} /></span> पैसा मिला
         </button>
-        <button className="action-card" onClick={() => go('later', { title: 'हिसाब जाँचें' })}>
+        <button className="action-card" onClick={() => go('hisaabCheck')}>
           <span className="icon-bubble blue"><Scale size={20} /></span> हिसाब जाँचें
         </button>
       </div>
+
+      <button className="same-btn" onClick={() => go('recordOther', { who: 'thekedar' })}>
+        <ShieldAlert size={24} /> ठेकेदार की बात रिकॉर्ड करें
+      </button>
 
       {pending.length > 0 && (
         <div className="card pending">
@@ -107,7 +113,7 @@ export default function Home() {
             <button key={r.localId} className="item" onClick={() => (r.serverId ? go('confirm', { entryId: r.serverId, localId: r.localId }) : go('saved', { localId: r.localId }))}>
               <span className="icon-bubble">{r.status === 'queued' ? <CloudUpload size={18} /> : r.status === 'hash_mismatch' || r.status === 'failed' ? <CircleAlert size={18} color="var(--urgent)" /> : <Mic size={18} />}</span>
               <div className="grow">
-                <div style={{ fontWeight: 700 }}>{r.kind === 'payment' ? 'पैसा मिला' : 'काम'} · {longDate(r.createdAt.slice(0, 10))}</div>
+                <div style={{ fontWeight: 700 }}>{KIND_LABEL[r.speaker === 'thekedar' ? 'thekedar' : r.kind] || 'काम'} · {longDate(r.createdAt.slice(0, 10))}</div>
                 <div className="small" style={{ color: 'var(--text-2)' }}>
                   #{shortCode(r.sha256, 2)} · {{ queued: 'फ़ोन में सेव · भेजना बाकी', saved: 'हब पर · पक्का करें', processed: 'पक्का करें', hash_mismatch: 'कोड मेल नहीं खाया', failed: 'नहीं भेजा जा सका' }[r.status] || r.status}
                 </div>

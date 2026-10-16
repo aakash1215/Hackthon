@@ -68,7 +68,9 @@ CREATE TABLE IF NOT EXISTS entries (
   confirmed_at TEXT,
   processed_tier TEXT NOT NULL DEFAULT 'server',
   notice_played INTEGER NOT NULL DEFAULT 0,
+  notice_lang TEXT,
   linked_day_ids TEXT,
+  reply TEXT,
   error TEXT
 );
 CREATE INDEX IF NOT EXISTS entries_worker_kind ON entries(worker_id, kind, status);
@@ -82,6 +84,7 @@ CREATE TABLE IF NOT EXISTS evidence (
   caption TEXT,
   consent INTEGER NOT NULL DEFAULT 0,
   lat REAL, lon REAL, gps_accuracy_m REAL, taken_ts TEXT,
+  client_sha256 TEXT, hash_match INTEGER,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS events (
@@ -94,7 +97,54 @@ CREATE TABLE IF NOT EXISTS events (
   prev_hash TEXT NOT NULL,
   hash TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS promises (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL REFERENCES workers(id),
+  source_entry_id TEXT,
+  source TEXT NOT NULL DEFAULT 'recording' CHECK (source IN ('telegram','recording')),
+  source_ref TEXT,
+  amount INTEGER, due_date TEXT, date_status TEXT,
+  confirmed INTEGER NOT NULL DEFAULT 0,
+  reminder_at TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS exports (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL REFERENCES workers(id),
+  period_from TEXT, period_to TEXT,
+  pdf_path TEXT, html_path TEXT, zip_path TEXT,
+  manifest_sha256 TEXT, chain_head TEXT, rate_pack_sha256 TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS tg_links (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL REFERENCES workers(id),
+  party_id TEXT,
+  invite_token TEXT NOT NULL UNIQUE,
+  chat_id INTEGER, tg_user_id INTEGER, tg_username TEXT,
+  lang TEXT, linked_at TEXT,
+  auto_daily INTEGER NOT NULL DEFAULT 1,
+  paused INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS tg_messages (
+  id TEXT PRIMARY KEY,
+  worker_id TEXT NOT NULL REFERENCES workers(id),
+  chat_id INTEGER,
+  direction TEXT NOT NULL CHECK (direction IN ('in','out')),
+  tg_message_id INTEGER,
+  tg_date TEXT,
+  text TEXT, voice_path TEXT, voice_sha256 TEXT, transcript TEXT,
+  classification TEXT, template_id TEXT, sha256 TEXT,
+  created_at TEXT
+);
 """
+
+# Columns added after P2. CREATE TABLE IF NOT EXISTS does not touch an existing table, so an older
+# data/apna.db gets them with ALTER TABLE (additive only; nothing is dropped or rewritten).
+_ADDED_COLUMNS = {
+    "entries": {"notice_lang": "TEXT", "reply": "TEXT"},
+    "evidence": {"client_sha256": "TEXT", "hash_match": "INTEGER"},
+}
 
 _write_lock = threading.RLock()
 
@@ -114,6 +164,11 @@ def init_db() -> None:
     conn = connect()
     try:
         conn.executescript(SCHEMA)
+        for table, cols in _ADDED_COLUMNS.items():
+            have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+            for col, typ in cols.items():
+                if col not in have:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
     finally:
         conn.close()
 

@@ -1,7 +1,7 @@
 // Record (UI/ D2) → optional photo + GPS step (composed in the same style; BUILD_PLAN P2) → save.
 // The audio is hashed and stored on the phone before anything is uploaded.
 import { useEffect, useRef, useState } from 'react'
-import { Banknote, Camera, Check, Clock, Coffee, HardHat, Lock, MapPin, Users, Wallet, CalendarDays } from 'lucide-react'
+import { Banknote, Camera, Check, CircleMinus, Clock, Coffee, HardHat, IndianRupee, Lock, MapPin, Users, Wallet, CalendarDays } from 'lucide-react'
 import { Btn, TopBar, useApp } from '../components/Ui.jsx'
 import { getFix } from '../lib/device.js'
 import { localIso, dayMonth, todayIso } from '../lib/format.js'
@@ -15,6 +15,16 @@ const SHAPE = [0.35, 0.6, 0.75, 0.6, 1, 0.8, 0.45, 0.7, 0.55, 0.6, 0.95, 0.85, 0
 const PROMPTS = {
   workday: [[Clock, 'कब से कब तक'], [HardHat, 'ठेकेदार'], [Users, 'साथ में कौन'], [Coffee, 'आराम कितना']],
   payment: [[Banknote, 'कितना मिला'], [HardHat, 'किसने दिया'], [Wallet, 'नकद या UPI'], [CalendarDays, 'किस काम का']],
+  hisaab_statement: [[CalendarDays, 'दिन'], [IndianRupee, 'रोज़ की दर'], [CircleMinus, 'कटौती'], [Banknote, 'कितना दिया']],
+}
+const SPEAK = {
+  workday: 'बोलिए, सुन रहे हैं। कब से कब तक काम किया, ठेकेदार कौन, साथ में कौन, आराम कितना।',
+  payment: 'बोलिए, सुन रहे हैं। कितना मिला, किसने दिया, नकद या UPI, किस काम का।',
+  hisaab_statement: 'बोलिए, सुन रहे हैं। ठेकेदार ने कितने दिन गिने, रोज़ की दर, कटौती, कितना दिया।',
+}
+const PHOTO_SUB = {
+  payment: 'रसीद या UPI मैसेज की फ़ोटो — चाहें तो',
+  hisaab_statement: 'ठेकेदार की पर्ची या हिसाब की फ़ोटो — चाहें तो',
 }
 
 export default function Record({ kind = 'workday' }) {
@@ -118,7 +128,7 @@ export default function Record({ kind = 'workday' }) {
       <div className="screen">
         <TopBar onCancel={cancel} speakText="आवाज़ रिकॉर्ड हो गई। चाहें तो फ़ोटो जोड़ें, फिर सेव करें।" />
         <h1 className="title">फ़ोटो जोड़ें?</h1>
-        <p className="subtitle">{kind === 'payment' ? 'रसीद या UPI मैसेज की फ़ोटो — चाहें तो' : 'साइट या काम की फ़ोटो — चाहें तो'}</p>
+        <p className="subtitle">{PHOTO_SUB[kind] || 'साइट या काम की फ़ोटो — चाहें तो'}</p>
         <div className="card pad stack">
           <div className="row">
             <span className="icon-bubble cream"><Check size={18} /></span>
@@ -145,7 +155,7 @@ export default function Record({ kind = 'workday' }) {
 
   return (
     <div className="screen">
-      <TopBar onCancel={cancel} speakText="बोलिए, सुन रहे हैं। कब से कब तक काम किया, ठेकेदार कौन, साथ में कौन, आराम कितना।" />
+      <TopBar onCancel={cancel} speakText={SPEAK[kind] || SPEAK.workday} />
       <div className="rec-title"><span className="rec-dot" /> बोलिए… सुन रहे हैं</div>
       <div className="center muted">आज, {dayMonth(todayIso())}</div>
       <div className="timer">{phase === 'starting' ? '0:00' : mmss}</div>
@@ -155,7 +165,7 @@ export default function Record({ kind = 'workday' }) {
       </div>
       <div className="label">ये बताएँ:</div>
       <div className="prompt-chips">
-        {PROMPTS[kind].map(([I, t]) => <span key={t}><I size={18} /> {t}</span>)}
+        {(PROMPTS[kind] || PROMPTS.workday).map(([I, t]) => <span key={t}><I size={18} /> {t}</span>)}
       </div>
       <div className="stop-wrap">
         <button className="stop-btn" onClick={stop} disabled={phase !== 'recording'} aria-label="रोकें">

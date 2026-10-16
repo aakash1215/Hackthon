@@ -10,7 +10,9 @@ import json
 import httpx
 
 from .config import settings
-from .contracts import FEW_SHOT, KIND_FIELDS, SYSTEM_PROMPT, json_schema_for
+from .contracts import (
+    FEW_SHOT, KIND_FIELDS, REPLY_FEW_SHOT, REPLY_INTENTS, REPLY_SYSTEM_PROMPT, SYSTEM_PROMPT, json_schema_for,
+)
 
 _FEW_SHOT_DATE = "2026-10-16"
 
@@ -40,13 +42,33 @@ def extract(kind: str, transcript: str, rec_date: str, context: dict | None = No
     """Return {field: {value, evidence}} for every field of `kind`. Raises LLMUnavailable."""
     if kind not in KIND_FIELDS:
         raise ValueError(f"unknown kind {kind}")
+    return _call(kind, build_messages(kind, transcript, rec_date, context), timeout)
+
+
+def extract_reply(transcript: str, timeout: float = 300) -> dict:
+    """thekedar_reply schema: {intent, confidence, amount, date, days}. Raises LLMUnavailable.
+
+    The intent is a classification only; any reply text is chosen by code from fixed templates.
+    """
+    msgs: list[dict] = [{"role": "system", "content": REPLY_SYSTEM_PROMPT}]
+    for text, out in REPLY_FEW_SHOT:
+        msgs.append({"role": "user", "content": "Transcript:\n" + text})
+        msgs.append({"role": "assistant", "content": json.dumps(out, ensure_ascii=False)})
+    msgs.append({"role": "user", "content": "Transcript:\n" + transcript})
+    out = _call("thekedar_reply", msgs, timeout)
+    if out.get("intent") not in REPLY_INTENTS:
+        out["intent"], out["confidence"] = "other", "low"
+    return out
+
+
+def _call(name: str, messages: list[dict], timeout: float) -> dict:
     body = {
         "model": settings.llm_model,
         "temperature": 0,
-        "messages": build_messages(kind, transcript, rec_date, context),
+        "messages": messages,
         "response_format": {
             "type": "json_schema",
-            "json_schema": {"name": kind, "schema": json_schema_for(kind)},
+            "json_schema": {"name": name, "schema": json_schema_for(name)},
         },
         "chat_template_kwargs": {"enable_thinking": False},
     }

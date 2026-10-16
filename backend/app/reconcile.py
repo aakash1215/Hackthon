@@ -8,7 +8,9 @@ from __future__ import annotations
 import re
 from datetime import date
 
-from .contracts import DATE_FIELDS, INT_FIELDS, KIND_FIELDS, MONEY_FIELDS, TIME_FIELDS
+from .contracts import (
+    DATE_FIELDS, INT_FIELDS, KIND_FIELDS, MONEY_FIELDS, SPAN_INT_FIELDS, SPAN_MONEY_FIELDS, TIME_FIELDS,
+)
 from .normalize import key, parse_clock, parse_date, parse_money
 
 LOW_LOGPROB = -1.0
@@ -96,7 +98,23 @@ def reconcile(
         else:
             lc = lv if lv is not None else None
 
-        if name in TIME_FIELDS or name in DATE_FIELDS or name in MONEY_FIELDS:
+        if name in SPAN_MONEY_FIELDS or name in SPAN_INT_FIELDS:
+            # Reader 1: the LLM's number. Reader 2: code parse of the LLM's own (grounded) quote.
+            lc = parse_money(lv) if lv is not None else None
+            sc = parse_money(ev) if ev else None
+            span = ev
+            if lc is None and sc is None:
+                value, status = None, "none"
+            elif lc is not None and sc is not None and lc == sc:
+                value, status, candidates, source = lc, "green", [lc], "both"
+            elif lc is not None and sc is not None:
+                value, status, candidates = None, "amber", [sc, lc]
+                flags.append("READERS_DISAGREE")
+            else:
+                value = sc if sc is not None else lc
+                status, candidates, source = "amber", [value], "span" if sc is not None else "llm"
+                flags.append("ONE_READER_ONLY")
+        elif name in TIME_FIELDS or name in DATE_FIELDS or name in MONEY_FIELDS:
             if lc is None and nv is None:
                 value, status = None, "red"
             elif lc is not None and nv is not None:

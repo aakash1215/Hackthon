@@ -24,18 +24,36 @@ export async function refreshCounts() {
 }
 
 /** Save a recording: hash on the phone, store in IndexedDB, queue the upload. Never needs the network. */
-export async function saveRecording({ kind, workerId, audio, photo, gps, clientTs, durationS }) {
+export async function saveRecording({
+  kind, workerId, audio, photo, gps, clientTs, durationS,
+  speaker = 'worker', noticePlayed = false, noticeLang = null, consentRefused = false, extra = {},
+}) {
   const localId = crypto.randomUUID()
   const sha = await sha256Hex(audio)
   const photoSha = photo ? await sha256Hex(photo) : null
   await updateRecord(localId, {
-    kind, createdAt: clientTs, sha256: sha, photoSha256: photoSha, bytes: audio.size, durationS,
-    gps: gps || null, status: 'queued', serverId: null, hashMatch: null, error: null,
+    kind, speaker, createdAt: clientTs, sha256: sha, photoSha256: photoSha, bytes: audio.size, durationS,
+    gps: gps || null, status: 'queued', serverId: null, hashMatch: null, error: null, consentRefused, ...extra,
   })
-  await pushJob({ type: 'entry', localId, kind, workerId, audio, photo: photo || null, gps: gps || null, clientTs, sha })
+  await pushJob({
+    type: 'entry', localId, kind, workerId, audio, photo: photo || null, gps: gps || null, clientTs, sha,
+    photoSha, speaker, noticePlayed, noticeLang, consentRefused,
+  })
   await refreshCounts()
   flush()
   return { localId, sha256: sha }
+}
+
+/**
+ * Save a standalone evidence photo (payment receipt, site board): hash on the phone, queue the upload.
+ * Works offline; returns the phone-side SHA-256 for the save code shown to the worker.
+ */
+export async function savePhoto({ workerId, kind, photo, entryId = null, caption = '', gps = null, clientTs }) {
+  const sha = await sha256Hex(photo)
+  await pushJob({ type: 'photo', workerId, kind, photo, entryId, caption, gps, clientTs, sha })
+  await refreshCounts()
+  flush()
+  return { sha256: sha }
 }
 
 export const queueJson = async (method, path, body) => {
@@ -57,7 +75,14 @@ async function runJob(job) {
     f.append('worker_id', job.workerId)
     f.append('client_ts', job.clientTs)
     f.append('client_sha256', job.sha)
-    if (job.photo) f.append('photo', job.photo, 'photo.jpg')
+    if (job.speaker) f.append('speaker', job.speaker)
+    if (job.noticePlayed) f.append('notice_played', 'true')
+    if (job.noticeLang) f.append('notice_lang', job.noticeLang)
+    if (job.consentRefused) f.append('consent_refused', 'true')
+    if (job.photo) {
+      f.append('photo', job.photo, 'photo.jpg')
+      if (job.photoSha) f.append('photo_client_sha256', job.photoSha)
+    }
     if (job.gps) {
       f.append('lat', String(job.gps.lat))
       f.append('lon', String(job.gps.lon))
@@ -72,6 +97,23 @@ async function runJob(job) {
       status: res.hash_match === false ? 'hash_mismatch' : 'saved',
       gpsSaved: res.gps_saved,
     })
+    return
+  }
+  if (job.type === 'photo') {
+    const f = new FormData()
+    f.append('photo', job.photo, 'photo.jpg')
+    f.append('worker_id', job.workerId)
+    f.append('kind', job.kind)
+    if (job.entryId) f.append('entry_id', job.entryId)
+    f.append('client_ts', job.clientTs)
+    f.append('client_sha256', job.sha)
+    if (job.caption) f.append('caption', job.caption)
+    if (job.gps) {
+      f.append('lat', String(job.gps.lat))
+      f.append('lon', String(job.gps.lon))
+      if (job.gps.acc != null) f.append('gps_accuracy_m', String(job.gps.acc))
+    }
+    await apiForm('/api/evidence/photo', f, { timeoutMs: 120000 })
   }
 }
 
@@ -124,6 +166,6 @@ export function startSync() {
 export async function pendingRecords() {
   const all = await getRecords()
   return Object.values(all)
-    .filter((r) => r.status !== 'confirmed')
+    .filter((r) => r.status !== 'confirmed' && !r.consentRefused)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
 }

@@ -13,7 +13,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import api, db
+from . import api, db, evidence_api
 from .config import REPO_ROOT, settings
 
 log = logging.getLogger("apna_hisaab")
@@ -28,6 +28,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Apna Hisaab", version="0.1.0", lifespan=lifespan)
 app.include_router(api.router)  # before the SPA catch-all below, so /api/* routes win
+app.include_router(evidence_api.router)
 
 
 async def _llm_status() -> dict:

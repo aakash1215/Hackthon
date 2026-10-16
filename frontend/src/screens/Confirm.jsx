@@ -2,8 +2,9 @@
 // reconciler; a value the worker picks becomes green. Only confirmed values are sent to the engine.
 import { useEffect, useState } from 'react'
 import {
-  CalendarDays, CalendarRange, Check, CircleAlert, CircleCheck, CircleHelp, CircleMinus, Clock, Coffee,
-  HardHat, Pencil, Quote, Timer, Users, Volume2,
+  Banknote, CalendarCheck, CalendarClock, CalendarDays, CalendarRange, Check, CircleAlert, CircleCheck, CircleHelp,
+  CircleMinus, Clock, Coffee, HardHat, IndianRupee, MapPin, MessageSquare, Pencil, Quote, Scale, Sigma, Timer, Users,
+  Volume2, Wallet,
 } from 'lucide-react'
 import { Btn, Sheet, Spinner, StatusChip, TopBar, useApp } from '../components/Ui.jsx'
 import * as api from '../lib/api.js'
@@ -34,6 +35,30 @@ const PAYMENT_ROWS = [
 ]
 const MODES = [['cash', 'नकद'], ['upi', 'UPI'], ['bank', 'बैंक']]
 
+// P3: what the thekedar said (BUILD_PLAN §8) and a co-worker's confirmation (§9). All numbers optional.
+const STATEMENT_NUMS = ['days_counted', 'rate_per_day', 'gross_amount', 'deductions', 'paid_now', 'balance_promised']
+const STATEMENT_ROWS = [
+  { name: 'days_counted', label: 'काम के दिन', icon: CalendarDays, fmt: (v) => `${v} दिन`, editor: 'number' },
+  { name: 'rate_per_day', label: 'रोज़ की दर', icon: IndianRupee, fmt: rupees, editor: 'amount' },
+  { name: 'gross_amount', label: 'कुल', icon: Sigma, fmt: rupees, editor: 'amount' },
+  { name: 'deductions', label: 'उचल / कटौती', icon: CircleMinus, fmt: rupees, editor: 'amount' },
+  { name: 'paid_now', label: 'कितना दिया', icon: Banknote, fmt: rupees, editor: 'amount' },
+  { name: 'balance_promised', label: 'बाकी देने को कहा', icon: Wallet, fmt: rupees, editor: 'amount' },
+  { name: 'promised_date', label: 'कब देंगे', icon: CalendarClock, editor: 'text', empty: 'नहीं बताया' },
+]
+const INTENTS = [['acknowledges', 'दिन माने'], ['promise_to_pay', 'पैसे देने का वादा'], ['disputes_days', 'दिन नहीं माने'], ['other', 'पता नहीं']]
+const INTENT_LABEL = Object.fromEntries(INTENTS)
+const INTENT_ROW = { name: 'intent', label: 'ठेकेदार ने क्या कहा', icon: MessageSquare, fmt: (v) => INTENT_LABEL[v] || v, editor: 'intent', required: true }
+const datesFmt = (v) => (Array.isArray(v) && v.length ? [...v].sort().map(dayMonth).join(', ') : null)
+const COWORKER_ROWS = [
+  { name: 'coworker_name', label: 'साथी का नाम', icon: Users, editor: 'text' },
+  { name: 'dates', label: 'किन दिनों साथ काम किया', icon: CalendarCheck, fmt: datesFmt, editor: 'dates', required: true },
+  { name: 'dates_or_days', label: 'साथी ने दिन क्या बताए', icon: Quote, editor: 'text', empty: 'नहीं सुना' },
+  { name: 'site', label: 'साइट', icon: MapPin, editor: 'text', empty: 'नहीं बताया' },
+  { name: 'consent_phrase', label: 'हाँ के शब्द', icon: Quote, editor: 'text', empty: 'नहीं सुना' },
+]
+const isEmpty = (v) => v == null || v === '' || (Array.isArray(v) && v.length === 0)
+
 /** Read-back template, filled only with candidate values; unknowns are spoken as unknown (Handoff §10.12). */
 export function readbackText(kind, fields) {
   const v = (n) => {
@@ -43,6 +68,11 @@ export function readbackText(kind, fields) {
     return f.candidates?.length === 1 ? f.candidates[0] : null
   }
   const unk = 'पता नहीं'
+  if (kind === 'hisaab_statement') {
+    const r = (n) => (v(n) != null ? `${v(n)} रुपये` : unk)
+    return `काम के दिन: ${v('days_counted') ?? unk}। रोज़ की दर: ${r('rate_per_day')}। कटौती: ${r('deductions')}। कितना दिया: ${r('paid_now')}। क्या यह सही है?`
+  }
+  if (kind === 'coworker_confirm') return `साथी का नाम: ${v('coworker_name') || unk}। क्या यह सही है?`
   if (kind === 'payment') {
     return `मिली रक़म: ${v('amount_paid') != null ? `${v('amount_paid')} रुपये` : unk}। तारीख: ${v('payment_date') ? dayMonth(v('payment_date')) : unk}। क्या यह सही है?`
   }
@@ -50,7 +80,7 @@ export function readbackText(kind, fields) {
 }
 
 export default function Confirm({ entryId, localId, copied }) {
-  const { profile, back, reset, toast } = useApp()
+  const { profile, back, reset, replace, go, toast } = useApp()
   const [entry, setEntry] = useState(null)
   const [fields, setFields] = useState({})
   const [vals, setVals] = useState({})
@@ -59,16 +89,32 @@ export default function Confirm({ entryId, localId, copied }) {
   const [blockCode, setBlockCode] = useState(null)
   const [sheet, setSheet] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [dayOptions, setDayOptions] = useState([])
 
-  function init(e, f) {
-    setFields(f || {})
+  function init(e, f, reply) {
+    const ff = { ...(f || {}) }
     const v = {}
     for (const [name, fld] of Object.entries(f || {})) {
       v[name] = fld.value ?? (fld.candidates?.length === 1 ? fld.candidates[0] : null)
     }
     if (e.kind === 'workday' && !v.contractor_name && profile.thekedar?.name) v.contractor_name = profile.thekedar.name
     if (e.kind === 'payment' && !v.payer_name && profile.thekedar?.name) v.payer_name = profile.thekedar.name
+    // Thekedar's intent: the classifier's guess is only a suggestion (amber) until the worker picks.
+    if (e.kind === 'hisaab_statement' && e.speaker === 'thekedar' && v.intent == null && reply?.intent && INTENT_LABEL[reply.intent]) {
+      v.intent = reply.intent
+      ff.intent = { status: 'amber' }
+    }
+    setFields(ff)
     setVals(v)
+    if (e.kind === 'coworker_confirm') {
+      getRecords().then((all) => {
+        const rec = (localId && all[localId]) || Object.values(all).find((x) => x.serverId === entryId)
+        if (rec?.dates?.length) setVals((cur) => (isEmpty(cur.dates) ? { ...cur, dates: rec.dates } : cur))
+      })
+      api.ledger(profile.worker_id, addDays(todayIso(), -45), todayIso())
+        .then((led) => setDayOptions([...new Set((led.days || []).map((d) => d.date))].sort().reverse()))
+        .catch(() => {})
+    }
   }
 
   useEffect(() => {
@@ -79,13 +125,13 @@ export default function Confirm({ entryId, localId, copied }) {
         if (!alive) return
         setEntry(e)
         if (e.status === 'confirmed') { init(e, Object.fromEntries(Object.entries(e.confirmed || {}).map(([k, x]) => [k, { value: x, status: 'green' }]))); setPhase('done'); return }
-        if (e.status === 'processed') { init(e, e.reconciled?.fields); setPhase('ready'); return }
-        if (!e.audio_path) { init(e, e.reconciled?.fields); setPhase('ready'); return }
+        if (e.status === 'processed') { init(e, e.reconciled?.fields, e.reply); setPhase('ready'); return }
+        if (!e.audio_path) { init(e, e.reconciled?.fields, e.reply); setPhase('ready'); return }
         setPhase('processing')
         const r = await api.processEntry(entryId)
         if (!alive) return
         setEntry({ ...e, status: r.status, transcript: r.transcript })
-        init(e, r.fields)
+        init(e, r.fields, r.reply)
         if (r.status === 'processed') {
           setPhase('ready')
           if (localId) updateRecord(localId, { status: 'processed' })
@@ -98,22 +144,58 @@ export default function Confirm({ entryId, localId, copied }) {
   }, [entryId])
 
   const kind = entry?.kind || 'workday'
-  const rows = kind === 'payment' ? PAYMENT_ROWS : WORKDAY_ROWS
+  const speaker = entry?.speaker || 'worker'
+  const rows = kind === 'payment' ? PAYMENT_ROWS
+    : kind === 'hisaab_statement' ? (speaker === 'thekedar' ? [INTENT_ROW, ...STATEMENT_ROWS] : STATEMENT_ROWS)
+      : kind === 'coworker_confirm' ? COWORKER_ROWS : WORKDAY_ROWS
   const setVal = (name, value) => { setVals((v) => ({ ...v, [name]: value })); setTouched((t) => ({ ...t, [name]: true })) }
 
   function statusOf(name, required) {
-    if (touched[name]) return vals[name] == null || vals[name] === '' ? (required ? 'red' : null) : 'green'
+    if (touched[name]) return isEmpty(vals[name]) ? (required ? 'red' : null) : 'green'
     const s = fields[name]?.status
     if (s === 'green' || s === 'amber' || s === 'red') {
-      if (s === 'green' && (vals[name] == null || vals[name] === '')) return 'red'
+      if (s === 'green' && isEmpty(vals[name])) return 'red'
+      if (s === 'red' && !required && isEmpty(vals[name]) && (kind === 'hisaab_statement' || kind === 'coworker_confirm')) return null
       return s
     }
-    if (required && (vals[name] == null || vals[name] === '')) return 'red'
-    if (vals[name] != null && vals[name] !== '') return 'amber' // e.g. thekedar filled from the profile
+    if (required && isEmpty(vals[name])) return 'red'
+    if (!isEmpty(vals[name])) return 'amber' // e.g. thekedar filled from the profile
     return null
   }
 
+  async function submitP3() {
+    const pick = (names) => Object.fromEntries(names.filter((n) => !isEmpty(vals[n])).map((n) => [n, vals[n]]))
+    let body
+    if (kind === 'hisaab_statement') {
+      if (speaker === 'thekedar' && !vals.intent) { toast('ठेकेदार ने क्या कहा — चुनें'); setSheet('intent'); return }
+      const nums = STATEMENT_NUMS.filter((n) => !isEmpty(vals[n]))
+      if (!nums.length) { toast('कम से कम एक संख्या भरें — दिन, दर या रक़म'); setSheet('days_counted'); return }
+      body = {
+        ...Object.fromEntries(nums.map((n) => [n, parseInt(vals[n], 10)])),
+        ...pick(['promised_date']),
+        ...(speaker === 'thekedar' ? { intent: vals.intent } : {}),
+      }
+    } else {
+      if (isEmpty(vals.dates)) { toast('किन दिनों साथ काम किया — दिन चुनें'); setSheet('dates'); return }
+      if (!vals.consent) { toast('साथी ने रिकॉर्डिंग के लिए हाँ कहा — यह पक्का करें'); return }
+      body = { ...pick(['coworker_name', 'dates_or_days', 'site', 'consent_phrase']), consent: true, dates: [...vals.dates].sort() }
+    }
+    setSaving(true)
+    try {
+      const r = await api.confirmEntry(entryId, body)
+      const recs = await getRecords()
+      const lid = localId || Object.values(recs).find((x) => x.serverId === entryId)?.localId
+      if (lid) await updateRecord(lid, { status: 'confirmed' })
+      if (kind === 'hisaab_statement') replace('diff', { entryId })
+      else { toast(`गवाही पक्की · रिकॉर्ड कोड ${r.chain_head?.short || ''}`); reset('ledger') }
+    } catch (e) {
+      setSaving(false)
+      toast(e instanceof api.NetworkError ? 'हब से जुड़ने पर पक्का करें — आवाज़ सेव है' : `पक्का नहीं हो पाया (${e.code})`)
+    }
+  }
+
   async function submit() {
+    if (kind === 'hisaab_statement' || kind === 'coworker_confirm') { submitP3(); return }
     const needed = kind === 'payment' ? ['payment_date', 'amount_paid'] : ['work_date', 'start_time', 'end_time', 'break_minutes']
     const missing = needed.find((n) => vals[n] == null || vals[n] === '')
     if (missing) { toast('लाल वाली बात बताना ज़रूरी है'); setSheet(missing); return }
@@ -137,13 +219,23 @@ export default function Confirm({ entryId, localId, copied }) {
     }
   }
 
-  const title = kind === 'payment' ? 'पैसा मिला — पक्का करें' : 'पक्का करें'
+  const title = {
+    payment: 'पैसा मिला — पक्का करें',
+    hisaab_statement: speaker === 'thekedar' ? 'ठेकेदार की बात — पक्का करें' : 'हिसाब — पक्का करें',
+    coworker_confirm: 'साथी की गवाही — पक्का करें',
+  }[kind] || 'पक्का करें'
+  const understanding = {
+    payment: 'रक़म, तारीख, देने वाला पहचान रहे हैं (1–2 मिनट)',
+    hisaab_statement: 'दिन, दर, कटौती, दी गई रक़म पहचान रहे हैं (1–2 मिनट)',
+    coworker_confirm: 'साथी का नाम, दिन, साइट पहचान रहे हैं (1–2 मिनट)',
+  }[kind] || 'समय, ठेकेदार, साथी पहचान रहे हैं (1–2 मिनट)'
+  const saidBy = speaker === 'thekedar' ? 'ठेकेदार ने कहा:' : speaker === 'coworker' ? 'साथी ने कहा:' : 'आपने कहा:'
   if (phase === 'loading' || phase === 'processing') {
     return (
       <div className="screen">
         <TopBar title={title} onBack={back} speakText="समझ रहे हैं, थोड़ा रुकिए" />
         <div className="card steps" style={{ marginTop: 20 }}>
-          <div className="row"><Spinner /> <div><div style={{ fontWeight: 700 }}>समझ रहे हैं…</div><div className="small" style={{ color: 'var(--text-2)' }}>{phase === 'processing' ? 'समय, ठेकेदार, साथी पहचान रहे हैं (1–2 मिनट)' : 'खोल रहे हैं…'}</div></div></div>
+          <div className="row"><Spinner /> <div><div style={{ fontWeight: 700 }}>समझ रहे हैं…</div><div className="small" style={{ color: 'var(--text-2)' }}>{phase === 'processing' ? understanding : 'खोल रहे हैं…'}</div></div></div>
         </div>
       </div>
     )
@@ -159,6 +251,7 @@ export default function Confirm({ entryId, localId, copied }) {
   }
 
   const readOnly = phase === 'done'
+  const manual = kind === 'hisaab_statement' && !entry?.audio_path && !entry?.transcript
   const mins = kind === 'workday' ? workedMinutes(vals.start_time, vals.end_time, vals.break_minutes) : null
   const ot = mins != null ? Math.max(0, mins - 480) : 0
   const amountField = fields.amount_paid || {}
@@ -168,8 +261,8 @@ export default function Confirm({ entryId, localId, copied }) {
       <TopBar title={title} onBack={back} speakText={readbackText(kind, Object.fromEntries(Object.entries(vals).map(([k, v]) => [k, { value: v }])))} />
 
       <div className="quote">
-        <div className="q"><Quote size={16} /> {copied ? 'कल की एंट्री से भरा:' : 'आपने कहा:'}</div>
-        <p>{copied ? 'हर बात देखकर पक्का करें — कल जैसा ही था?' : entry?.transcript ? `“${entry.transcript}”` : 'आवाज़ में कोई बात साफ़ नहीं सुनाई दी — नीचे खुद भरें।'}</p>
+        <div className="q"><Quote size={16} /> {copied ? 'कल की एंट्री से भरा:' : manual ? 'टाइप करके भरें:' : saidBy}</div>
+        <p>{copied ? 'हर बात देखकर पक्का करें — कल जैसा ही था?' : manual ? 'ठेकेदार ने जो बताया, नीचे भरें — जो नहीं पता, ख़ाली छोड़ें।' : entry?.transcript ? `“${entry.transcript}”` : 'आवाज़ में कोई बात साफ़ नहीं सुनाई दी — नीचे खुद भरें।'}</p>
       </div>
 
       {phase === 'blocked' && (
@@ -178,6 +271,7 @@ export default function Confirm({ entryId, localId, copied }) {
         </div>
       )}
       {readOnly && <div className="info-row" style={{ marginTop: 12 }}><CircleCheck size={20} color="var(--brand)" /> यह एंट्री पहले ही पक्की हो चुकी है।</div>}
+      {readOnly && kind === 'hisaab_statement' && <Btn variant="outline" icon={Scale} style={{ marginTop: 12 }} onClick={() => go('diff', { entryId })}>मिलान देखें</Btn>}
 
       {kind === 'payment' && (
         <>
@@ -209,7 +303,7 @@ export default function Confirm({ entryId, localId, copied }) {
         {rows.map((r) => {
           const st = statusOf(r.name, r.required)
           const v = vals[r.name]
-          const shown = v == null || v === '' ? null : r.fmt ? r.fmt(v) : String(v)
+          const shown = isEmpty(v) ? null : r.fmt ? r.fmt(v) : String(v)
           const I = r.icon
           return (
             <button key={r.name} className={`frow ${st === 'amber' ? 'ask' : st === 'red' ? 'urgent' : ''}`} onClick={() => !readOnly && setSheet(r.name)}>
@@ -223,6 +317,14 @@ export default function Confirm({ entryId, localId, copied }) {
           )
         })}
       </div>
+
+      {kind === 'coworker_confirm' && (
+        <div className={`option ${vals.consent ? 'on' : ''}`} style={{ marginTop: 12, ...(vals.consent ? {} : { background: 'var(--urgent-bg)', borderColor: 'var(--urgent)' }) }}
+          onClick={() => !readOnly && setVal('consent', !vals.consent)} role="checkbox" aria-checked={!!vals.consent}>
+          <span className={`check-box ${vals.consent ? 'on' : ''}`}>{vals.consent && <Check size={15} strokeWidth={3} />}</span>
+          <div className="body"><div className="name" style={{ fontSize: 16.5 }}>साथी ने रिकॉर्डिंग के लिए हाँ कहा</div><div className="desc">ज़रूरी — रिकॉर्डिंग में उनकी हाँ सुनकर टिक करें</div></div>
+        </div>
+      )}
 
       {kind === 'workday' && mins != null && (
         <div className="sum-pill"><Timer size={20} /> कुल {hoursText(mins)} · {ot ? `${hoursText(ot).replace('घंटे', ot === 60 ? 'घंटा' : 'घंटे')} ओवरटाइम` : 'ओवरटाइम नहीं'}</div>
@@ -245,7 +347,7 @@ export default function Confirm({ entryId, localId, copied }) {
         </div>
       )}
 
-      <FieldSheet name={sheet} field={sheet ? fields[sheet] : null} value={sheet ? vals[sheet] : null}
+      <FieldSheet name={sheet} field={sheet ? fields[sheet] : null} value={sheet ? vals[sheet] : null} dayOptions={dayOptions}
         row={[...rows, { name: 'amount_paid', label: 'मिली रक़म', editor: 'amount' }].find((r) => r.name === sheet)}
         onClose={() => setSheet(null)} onPick={(v) => { setVal(sheet, v); setSheet(null) }} />
     </div>
@@ -294,7 +396,7 @@ function TimeEditor({ label, value, onChange }) {
   )
 }
 
-function FieldSheet({ name, field, value, row, onClose, onPick }) {
+function FieldSheet({ name, field, value, row, onClose, onPick, dayOptions = [] }) {
   const [draft, setDraft] = useState(value)
   useEffect(() => { setDraft(value) }, [name, value])
   if (!name || !row) return null
@@ -340,10 +442,53 @@ function FieldSheet({ name, field, value, row, onClose, onPick }) {
         </div>
       </>
     )
+  } else if (row.editor === 'number') {
+    body = (
+      <>
+        <h2>{row.label}</h2>
+        <div className="field" style={{ marginTop: 10 }}>
+          <input inputMode="numeric" autoFocus value={draft ?? ''} onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 3); setDraft(d ? Number(d) : null) }} />
+          <span style={{ fontWeight: 700 }}>दिन</span>
+        </div>
+      </>
+    )
+  } else if (row.editor === 'intent') {
+    body = (
+      <>
+        <h2>{row.label}?</h2>
+        <div className="stack" style={{ marginTop: 10 }}>
+          {INTENTS.map(([k, l]) => (
+            <div key={k} className={`option ${draft === k ? 'on' : ''}`} onClick={() => setDraft(k)} role="radio" aria-checked={draft === k}>
+              <div className="body"><div className="name">{l}</div></div>
+              <span className={`radio ${draft === k ? 'on' : ''}`}>{draft === k && <Check size={13} strokeWidth={3} />}</span>
+            </div>
+          ))}
+        </div>
+      </>
+    )
+  } else if (row.editor === 'dates') {
+    const cur = Array.isArray(draft) ? draft : []
+    const opts = [...new Set([...cur, ...dayOptions])].sort().reverse()
+    const flip = (d) => setDraft(cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d])
+    body = (
+      <>
+        <h2>{row.label}?</h2>
+        <p className="muted" style={{ marginTop: 0 }}>आपके पक्के काम के दिन</p>
+        <div className="stack" style={{ marginTop: 8 }}>
+          {opts.length === 0 && <div className="info-row">हब से जुड़ने पर आपके पक्के दिन यहाँ दिखेंगे</div>}
+          {opts.map((d) => (
+            <div key={d} className={`option ${cur.includes(d) ? 'on' : ''}`} style={{ minHeight: 52 }} onClick={() => flip(d)} role="checkbox" aria-checked={cur.includes(d)}>
+              <div className="body"><div className="name">{longDate(d)}</div></div>
+              <span className={`check-box ${cur.includes(d) ? 'on' : ''}`}>{cur.includes(d) && <Check size={15} strokeWidth={3} />}</span>
+            </div>
+          ))}
+        </div>
+      </>
+    )
   } else if (row.editor === 'amount') {
     body = (
       <>
-        <h2>मिली रक़म</h2>
+        <h2>{row.label}</h2>
         <div className="field" style={{ marginTop: 10 }}>
           <span style={{ fontWeight: 700, fontSize: 20 }}>₹</span>
           <input inputMode="numeric" autoFocus value={draft ?? ''} onChange={(e) => setDraft(e.target.value.replace(/\D/g, '').slice(0, 6) ? Number(e.target.value.replace(/\D/g, '').slice(0, 6)) : null)} />

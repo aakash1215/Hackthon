@@ -2,12 +2,22 @@
 // on the phone, so the hash covers exactly what was recorded.
 const MIME = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus']
 
-export async function startRecorder({ maxMs = 60000, onLevel, onAutoStop } = {}) {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+export async function startRecorder({ maxMs = 60000, onLevel, onAutoStop, echoCancellation = true } = {}) {
+  // echoCancellation=false keeps the phone's own spoken notice on the tape (recording another person).
+  const stream = await navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation, noiseSuppression: echoCancellation, autoGainControl: true },
+  })
   const mimeType = MIME.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported?.(m)) || ''
   const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
   const chunks = []
-  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data) }
+  // mark(): remember where the spoken notice ended. A WebM prefix of 1-second chunks is itself a
+  // playable file, so on refusal only the notice part is kept (BUILD_PLAN §8 "only the notice is kept").
+  let markAt = null
+  let markPending = false
+  rec.ondataavailable = (e) => {
+    if (e.data && e.data.size) chunks.push(e.data)
+    if (markPending) { markAt = chunks.length; markPending = false }
+  }
 
   let ctx = null
   let raf = 0
@@ -39,12 +49,22 @@ export async function startRecorder({ maxMs = 60000, onLevel, onAutoStop } = {})
     cancelAnimationFrame(raf)
     ctx?.close().catch(() => {})
     stream.getTracks().forEach((t) => t.stop())
-    finish({ blob: new Blob(chunks, { type: rec.mimeType || mimeType || 'audio/webm' }), durationS: Math.round((Date.now() - started) / 1000) })
+    const type = rec.mimeType || mimeType || 'audio/webm'
+    finish({
+      blob: new Blob(chunks, { type }),
+      noticeBlob: markAt ? new Blob(chunks.slice(0, markAt), { type }) : null,
+      durationS: Math.round((Date.now() - started) / 1000),
+    })
   }
   const timer = setTimeout(() => { if (rec.state !== 'inactive') { rec.stop(); onAutoStop?.() } }, maxMs)
 
   return {
     started,
+    mark() {
+      if (rec.state !== 'recording') return
+      markPending = true
+      rec.requestData?.()
+    },
     stop() {
       clearTimeout(timer)
       if (rec.state !== 'inactive') rec.stop()
