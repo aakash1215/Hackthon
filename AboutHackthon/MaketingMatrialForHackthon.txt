@@ -1,0 +1,59 @@
+poster : ./image.png
+
+🚀 OPENFORGE HACKATHON | SWAYAMBHU 2026
+
+Build Fast. Build Real. Build Open.
+
+Organized by the Department of Computer Science & Engineering, JNEC (MGM University), in collaboration with DomAIyn Labs and the Game Developers Association of India (GDAI).
+
+🏆 TOTAL PRIZE POOL: ₹20,000 CASH
+
+- ₹10,000 — Winner: Open Weight AI & Open Source Tools
+- ₹10,000 — Winner: Play Lab
+
+🎁 More exclusive and exciting prizes from DomAIyn Labs and GDAI for the winners — revealing soon!
+
+⚡ THE TRACKS
+
+🔹 Track 1: Open Weight AI & Open Source Tools
+
+Build an original solution leveraging open-weight models (Llama, Mistral, Whisper, etc.) and open-source ecosystems. (Includes 3 exclusive industry problem statements by DomAIyn Labs!)
+
+🔹 Track 2: Play Lab
+
+A design-and-build arena focused on game development, interactive mechanics, and gamified digital experiences.
+
+👥 KEY DETAILS
+
+- Eligibility: UG, PG
+- Team Size: 1–4 Members
+- Registration Fee: ₹200 per team
+
+🗓️ EVENT TIMELINE
+
+📌 Round 1: Online Proposal Submission
+
+- Timeline: 6th – 12th October 2026
+- Deliverable: Submit a 6 slide project proposal (PPT) via the form.
+- Submission link will be provided later only to the participants
+
+📌 Shortlist Announcement:
+
+- Date: 13th October 2026
+- Top 30~40 teams advance to the offline grand finale!
+
+🔥 Round 2: Final Build Day (Offline - 10 hours)
+
+- Date & Time: 16th October 2026 | 07:30 AM onwards
+- Venue: CSE Seminar Hall, JNEC, MGM University, Chhatrapati Sambhajinagar.
+
+🔗 IMPORTANT LINKS & RESOURCES
+
+📝 Register:
+👉 https://forms.gle/im4pR3VehnyL3Xcf6
+
+📄 Problem Statements:
+👉 https://drive.google.com/file/d/14f1vSixLhcnhHyzD5qmSq8_AAFWDY4SG/view
+
+📖 Track Guide & Official Rulebook:
+👉 https://drive.google.com/file/d/1-bEAi8fsLj83uE3Lktqg11_pZV3aru2r/view

@@ -1,0 +1,7 @@
+{
+    "track": "Open Weight AI & Open Source Tools",
+    "psid": "PS07",
+    "title": "Migrant Worker Wage-Theft Evidence Builder",
+    "Description": "Seasonal and migrant construction workers frequently face wage theft with no formal record to prove it. Build a simple, offline-first tool where a worker logs daily attendance and hours worked — a voice note in their own language is enough — and an open-weight speech and language model transcribes, structures, and compiles these logs into a legally-usable wage-claim document, comparing the logged hours against the applicable state's minimum wage notification.",
+    "Tools & Technologies": "Open-weight speech-to-text (Whisper — open-weight versions, or Vosk for fully offline use); open-weight LLM for structuring transcripts into a claim document (small models for on-device use); local-first storage (SQLite); backend with Node.js/Express, FastAPI, or Spring Boot; React or Angular for a lightweight, mobile-friendly interface that works with minimal connectivity."
+}

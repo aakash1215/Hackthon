@@ -1,0 +1,28 @@
+Device Name	Akash
+Processor	Intel(R) Core(TM) i3-6006U CPU @ 2.00GHz   2.00 GHz
+Installed RAM	8.00 GB (7.87 GB usable)
+Storage	932 GB HDD TOSHIBA MQ01ABD100, 238 GB SSD EVM25/256GB
+Graphics Card	AMD Radeon (TM) R5 M330 (2 GB), Intel(R) HD Graphics 520 (128 MB)
+Device ID	DBE02EC4-549B-4E09-9C60-A76A5A0D5A34
+Product ID	00327-30493-40988-AAOEM
+System Type	64-bit operating system, x64-based processor
+Pen and touch	No pen or touch input is available for this display
+
+Device Name Anuskha
+Will be told to you ! 
+but with nvidia GPU 2-4GB Vram
+
+---- Confirmed facts (note added 13-Oct-2026; earlier lines above are unchanged) ----
+Dates (team-confirmed extended schedule):
+  - Round 1 PPT deadline: 13 Oct 2026, midnight
+  - Final Build Day: Sat 17 Oct 2026 (start time / duration / venue still TBC with coordinators;
+    the official files conflict: "CSE Seminar Hall" vs "Department computer labs")
+Build-day hardware decision:
+  - Tier A (primary demo): NVIDIA laptop with 8 GB VRAM (exact GPU model still to be recorded here)
+  - Tier B (fallback): Anuskha's laptop, NVIDIA 2-4 GB VRAM
+  - Tier C (emergency): Akash's laptop above (i3-6006U, 8 GB RAM, no CUDA) - CPU-only mode
+  - Use Python 3.11/3.12 for the ML stack (this laptop has Python 3.14.3; many ML wheels may not support it)
+Plan and handoff: see planning/PS07_Strategy_Report.md and planning/IMPLEMENTATION_HANDOFF.md
+---- Addendum 13-Oct-2026 (coordinator answers, see AboutHackthon/Question&Answers.md) ----
+  - Build day confirmed: Sat 17 Oct 2026, 07:00, 10 hours, at the college; own laptops OK; power sockets OK; internet available
+  - Builder: solo (Akash). Tier A laptop = capable Windows PC, exact GPU to be recorded here once known
