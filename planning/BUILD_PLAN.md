@@ -18,7 +18,7 @@
 
 | Phase | Target end | Status | Notes |
 |---|---|---|---|
-| P0 Setup, restore, model servers, HTTPS | 10:30 | ✅ 10:55 | pytest 19 green (F1–F9 + health). HTTPS `/api/health` OK on LAN IP (curl, verified chain); phone check pending (CA install). llama-server CPU + Qwen3-1.7B: schema JSON in 18 s, grounded evidence, but **wrong values** (सात→5 PM, पाँच सौ→5000) → normalizer must parse evidence spans in code. whisper-small int8: 7.4 s clip in 11.4 s. `av` pinned 15.1 (faster-whisper compat). Qwen3.5-2B still downloading for comparison. Scripts: `scripts/download_models.sh cpu\|gpu\|indic`, `start_llm.sh`, `make_certs.sh`, `smoke_llm.py`. |
+| P0 Setup, restore, model servers, HTTPS | 10:30 | ✅ 10:55 | pytest 19 green (F1–F9 + health). HTTPS `/api/health` OK on LAN IP (curl, verified chain); phone check pending (CA install). llama-server CPU + Qwen3-1.7B: schema JSON in 18 s, grounded evidence, but **wrong values** (सात→5 PM, पाँच सौ→5000) → normalizer must parse evidence spans in code. whisper-small int8: 7.4 s clip in 11.4 s. `av` pinned 15.1 (faster-whisper compat). Qwen3.5-2B compared: slower (26.6 s) and worse spans → **keep Qwen3-1.7B** on CPU. Scripts: `scripts/download_models.sh cpu\|gpu\|indic`, `start_llm.sh`, `make_certs.sh`, `smoke_llm.py`. |
 | P1 Evidence core backend | 12:00 (**CP1**) | ☐ | |
 | P2 Mobile PWA cloned from `UI/` + offline queue | 13:30 (**CP2**) | ☐ | |
 | P3 Corroboration layer + evidence packet | 15:00 (**CP3**) | ☐ | |
