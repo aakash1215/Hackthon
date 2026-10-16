@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AppCtx } from './components/Ui.jsx'
 import { getProfile, saveProfile } from './lib/db.js'
 import { startSync, subscribe } from './lib/sync.js'
+import { loadDemoFromUrl } from './lib/demo.js'
 import Onboarding from './screens/Onboarding.jsx'
 import Home from './screens/Home.jsx'
 import Record from './screens/Record.jsx'
@@ -29,8 +30,11 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState(null)
 
   useEffect(() => {
-    getProfile().then((p) => setProfileState(p || null)).catch(() => setProfileState(null))
-    startSync()
+    // ?demo=<worker_id> loads the seeded demo persona first (P6); a failure leaves the phone as it was.
+    loadDemoFromUrl().catch(() => false).finally(() => {
+      getProfile().then((p) => setProfileState(p || null)).catch(() => setProfileState(null))
+      startSync()
+    })
     return subscribe(setSync)
   }, [])
 

@@ -1,6 +1,6 @@
 // IndexedDB (idb-keyval) store for the profile, the offline job queue and local records.
 // Writes go through a promise-chain lock so the sync loop and the UI never overwrite each other.
-import { createStore, del, get, set } from 'idb-keyval'
+import { clear, createStore, del, get, set } from 'idb-keyval'
 
 const store = createStore('apna-hisaab', 'kv')
 let chain = Promise.resolve()
@@ -17,6 +17,8 @@ export const read = async (key, fallback = null) => {
 }
 export const write = (key, value) => set(key, value, store)
 export const remove = (key) => del(key, store)
+/** Log out: forget everything on this phone (profile, queue, records, caches). The hub keeps the record. */
+export const clearPhone = () => withLock(() => clear(store))
 
 // --- profile -----------------------------------------------------------------
 export const getProfile = () => read('profile', null)

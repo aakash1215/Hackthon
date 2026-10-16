@@ -30,3 +30,6 @@ Thumbs.db
 
 # local https certs
 certs/
+
+# agent worktrees (Claude Code)
+.claude/worktrees/

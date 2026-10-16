@@ -1,9 +1,10 @@
 // Settings & safety (UI/ F2, the parts P2 needs): chain check, upload queue, language, audio consent.
 // Not built yet: SMS record code, PIN, delete one/all (PIN is cut line §4 #7; deletes need the P3 tombstone UI).
 import { useEffect, useState } from 'react'
-import { Check, ChevronRight, CloudUpload, Languages, MessageCircle, Mic, RefreshCw, ShieldCheck, CircleAlert, Users } from 'lucide-react'
+import { Check, ChevronRight, CloudUpload, Languages, LogOut, MessageCircle, Mic, RefreshCw, ShieldCheck, CircleAlert, Users } from 'lucide-react'
 import { Btn, Sheet, TopBar, useApp } from '../components/Ui.jsx'
 import * as api from '../lib/api.js'
+import { clearPhone } from '../lib/db.js'
 import { flush, queueJson } from '../lib/sync.js'
 
 export default function Settings() {
@@ -11,6 +12,7 @@ export default function Settings() {
   const [chain, setChain] = useState(null)
   const [unionSheet, setUnionSheet] = useState(false)
   const [unionDraft, setUnionDraft] = useState(profile.union_phone || '')
+  const [logoutSheet, setLogoutSheet] = useState(false)
   const check = () => { setChain(null); api.chainVerify().then(setChain).catch(() => setChain({ offline: true })) }
   useEffect(check, [])
 
@@ -29,6 +31,12 @@ export default function Settings() {
     await setProfile({ ...profile, union_phone: unionDraft.trim() || null })
     setUnionSheet(false)
     toast('नंबर सेव हो गया')
+  }
+
+  // Log out of this phone only: the hub keeps every saved entry and the hash chain.
+  async function logout() {
+    await clearPhone()
+    window.location.replace('/')
   }
 
   return (
@@ -91,7 +99,24 @@ export default function Settings() {
           <Btn icon={Check} onClick={saveUnion}>सेव करें</Btn>
         </div>
       </Sheet>
-      <p className="center small" style={{ marginTop: 'auto' }}>हब पर काम · आवाज़ पहले फ़ोन में सेव · संस्करण 0.2</p>
+      {/* same place and style as F2's red "सब मिटाएँ" button */}
+      <Btn variant="danger" icon={LogOut} style={{ marginTop: 18 }} onClick={() => setLogoutSheet(true)}>लॉग आउट</Btn>
+      <Sheet open={logoutSheet} onClose={() => setLogoutSheet(false)}>
+        <div className="kicker" style={{ color: 'var(--urgent)' }}><LogOut size={20} /> लॉग आउट</div>
+        <h2>इस फ़ोन से {profile.display_name || 'आपका'} खाता हटाएँ?</h2>
+        <p className="muted" style={{ marginTop: 0 }}>हब पर आपका पूरा रिकॉर्ड सुरक्षित रहेगा। इस फ़ोन पर फिर से शुरू से जानकारी भरनी होगी।</p>
+        {sync.queued > 0 && (
+          <div className="info-row" style={{ background: 'var(--urgent-bg)', color: 'var(--urgent)' }}>
+            <CircleAlert size={20} /> {sync.queued} रिकॉर्डिंग अभी हब पर नहीं पहुँची — लॉग आउट करने पर ये खो जाएँगी। पहले हब से जुड़कर भेजें।
+          </div>
+        )}
+        <div className="stack" style={{ marginTop: 16 }}>
+          {sync.queued > 0 && <Btn icon={CloudUpload} onClick={() => { flush(); setLogoutSheet(false); toast('भेज रहे हैं…') }}>पहले भेजें</Btn>}
+          <Btn variant="danger" icon={LogOut} onClick={logout}>{sync.queued > 0 ? 'फिर भी लॉग आउट करें' : 'हाँ, लॉग आउट करें'}</Btn>
+          <Btn variant="plain" onClick={() => setLogoutSheet(false)}>रद्द करें</Btn>
+        </div>
+      </Sheet>
+      <p className="center small" style={{ marginTop: 'auto', paddingTop: 16 }}>हब पर काम · आवाज़ पहले फ़ोन में सेव · संस्करण 0.2</p>
     </div>
   )
 }
