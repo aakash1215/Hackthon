@@ -1,19 +1,23 @@
-// Onboarding (UI/ 1.png, O2, O3, O5, O6, O7). PIN (O4) and profile picker (A1) are cut (BUILD_PLAN §4 #7).
+// Onboarding (UI/ 1.png, O2, O3, O4 PIN, O5, O6, O7) and login for an existing account (UI/ A1).
 // Composed additions in the same style: name field (O5), GPS opt-in card (O6), 4th consent bullet (GPS).
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
-  Axe, BookOpen, BrickWall, Check, ChevronDown, CircleCheck, CircleHelp, Hammer, IndianRupee, Info, MapPin,
+  Axe, BookOpen, LogIn, NotebookPen, Plus, BrickWall, Check, ChevronDown, CircleCheck, CircleHelp, Hammer, IndianRupee, Info, MapPin,
   Mic, PaintRoller, Pencil, Send, ShieldCheck, Shovel, Smartphone, Trash2, Volume2, ArrowRight,
 } from 'lucide-react'
-import { Btn, TopBar, useApp } from '../components/Ui.jsx'
+import { Btn, Spinner, TopBar, useApp } from '../components/Ui.jsx'
+import PinPad from '../components/PinPad.jsx'
+import * as api from '../lib/api.js'
+import { clearLocalData, profileFromServer } from '../lib/profile.js'
 import { getFix, speak } from '../lib/device.js'
 import { queueJson } from '../lib/sync.js'
 
-const STEPS = ['welcome', 'language', 'consent', 'category', 'site', 'contractor']
+const STEPS = ['welcome', 'language', 'consent', 'pin', 'category', 'site', 'contractor']
 
 export default function Onboarding() {
   const { setProfile } = useApp()
   const [step, setStep] = useState(0)
+  const [login, setLogin] = useState(false)
   const [d, setD] = useState({
     language: 'hi', consent_keep_audio: true, display_name: '', category_label: 'helper', category: 'unskilled',
     category_confirmed: false, site: { name: '', landmark: '', city: 'छत्रपति संभाजीनगर', zone: 'I', zone_confirmed: false, sphere: 'state' },
@@ -23,7 +27,7 @@ export default function Onboarding() {
   const up = (patch) => setD((x) => ({ ...x, ...patch }))
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1))
   const back = () => setStep((s) => Math.max(s - 1, 0))
-  const progress = { step: step, total: 6 }
+  const progress = { step: step, total: 7 }
 
   async function finish() {
     const workerId = crypto.randomUUID().replace(/-/g, '').slice(0, 12)
@@ -34,6 +38,7 @@ export default function Onboarding() {
       category: d.category, default_break_min: d.usual.break_min, consent_keep_audio: d.consent_keep_audio,
       gps_opt_in: d.gps_opt_in,
     })
+    if (d.pin) await queueJson('POST', `/api/workers/${workerId}/pin`, { pin: d.pin }) // stored hashed on the hub
     await queueJson('POST', '/api/sites', {
       worker_id: workerId, name: d.site.name || null, landmark: d.site.landmark || null, city: d.site.city,
       state: 'Maharashtra', sphere: d.site.sphere, zone: d.site.zone, zone_confirmed: d.site.zone_confirmed,
@@ -46,14 +51,141 @@ export default function Onboarding() {
         phone: d.thekedar.phone_unknown ? null : d.thekedar.phone || null, source: 'stated',
       })
     }
-    await setProfile(p)
+    const { pin: _pin, ...profile } = p // the PIN never stays on the phone
+    await setProfile(profile)
   }
 
-  const S = { welcome: Welcome, language: Language, consent: Consent, category: Category, site: Site, contractor: Contractor }[STEPS[step]]
-  return <S d={d} up={up} next={next} back={back} progress={progress} finish={finish} />
+  if (login) return <Login onNew={() => { setLogin(false); setStep(1) }} onBack={() => setLogin(false)} />
+  const S = { welcome: Welcome, language: Language, consent: Consent, pin: PinStep, category: Category, site: Site, contractor: Contractor }[STEPS[step]]
+  return <S d={d} up={up} next={next} back={back} progress={progress} finish={finish} onLogin={() => setLogin(true)} />
 }
 
-function Welcome({ next }) {
+// O4: create a 4-digit PIN (enter twice).
+function PinStep({ d, up, next, back, progress }) {
+  const [first, setFirst] = useState(null)
+  const [err, setErr] = useState(0)
+  function done(pin) {
+    if (!first) { setFirst(pin); return }
+    if (pin === first) { up({ pin }); next(); return }
+    setFirst(null)
+    setErr((e) => e + 1)
+  }
+  return (
+    <div className="screen">
+      <TopBar onBack={back} progress={progress} speakText={first ? 'वही PIN फिर से डालें' : '4 अंकों का PIN बनाएँ। फ़ोन किसी और के हाथ में हो, तो भी आपका हिसाब सुरक्षित रहे।'} />
+      <h1 className="title">{first ? 'वही PIN फिर डालें' : '4 अंकों का PIN बनाएँ'}</h1>
+      <p className="subtitle">{err && !first ? 'दोनों PIN अलग थे — फिर से बनाएँ' : 'फ़ोन किसी और के हाथ में हो, तो भी आपका हिसाब सुरक्षित रहे'}</p>
+      <PinPad onDone={done} resetKey={`${first}-${err}-${d.pin}`} error={err} />
+      <p className="center small" style={{ marginTop: 14 }}>यह PIN किसी को न बताएँ</p>
+    </div>
+  )
+}
+
+// A1: who is using the app? Pick your name, then your PIN. Needs the hub (the account lives there).
+function Login({ onNew, onBack }) {
+  const { setProfile, toast } = useApp()
+  const [people, setPeople] = useState(null)
+  const [sel, setSel] = useState(null)
+  const [msg, setMsg] = useState(null)
+  const [tries, setTries] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [mustSet, setMustSet] = useState(null) // server data while a legacy account creates its PIN
+  const [first, setFirst] = useState(null)
+
+  useEffect(() => {
+    api.apiJson('GET', '/api/workers/directory', null, { timeoutMs: 6000 })
+      .then((r) => { setPeople(r.items); if (r.items.length) setSel(r.items[0]) })
+      .catch(() => setPeople(false))
+  }, [])
+
+  async function enter(res) {
+    await clearLocalData()
+    await setProfile(profileFromServer(res))
+  }
+
+  async function tryLogin(pin) {
+    setBusy(true)
+    try {
+      const res = await api.apiJson('POST', '/api/login', { worker_id: sel.id, pin: pin || null })
+      if (res.needs_pin) { setMustSet(res); setMsg(null); return }
+      await enter(res)
+    } catch (e) {
+      const code = e.code || ''
+      if (code.startsWith('WRONG_PIN')) setMsg(`PIN गलत · ${code.split(':')[1]} कोशिश बाकी`)
+      else if (code.startsWith('LOCKED')) setMsg('बहुत बार गलत PIN — 5 मिनट बाद फिर कोशिश करें')
+      else setMsg(e instanceof api.NetworkError ? 'हब से नहीं जुड़ पाए' : `नहीं हो पाया (${code})`)
+      setTries((t) => t + 1)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function setNewPin(pin) {
+    if (!first) { setFirst(pin); return }
+    if (pin !== first) { setFirst(null); setTries((t) => t + 1); setMsg('दोनों PIN अलग थे — फिर से बनाएँ'); return }
+    try {
+      await api.apiJson('POST', `/api/workers/${mustSet.worker.id}/pin`, { pin })
+      toast('PIN बन गया')
+      await enter(mustSet)
+    } catch (e) {
+      setMsg(`नहीं हो पाया (${e.code})`)
+    }
+  }
+
+  if (mustSet) {
+    return (
+      <div className="screen">
+        <TopBar onBack={() => { setMustSet(null); setFirst(null) }} speakText="इस खाते का PIN नहीं बना है। अभी 4 अंकों का PIN बनाएँ।" />
+        <h1 className="title">{first ? 'वही PIN फिर डालें' : 'अपना PIN बनाएँ'}</h1>
+        <p className="subtitle">{msg || `${mustSet.worker.display_name || 'इस खाते'} का PIN अभी तक नहीं बना`}</p>
+        <PinPad onDone={setNewPin} resetKey={`${first}-${tries}`} error={tries} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="screen">
+      <TopBar onBack={onBack} speakText="कौन इस्तेमाल कर रहा है? अपना नाम चुनें, फिर PIN डालें।" />
+      <div className="login-logo"><NotebookPen size={36} /></div>
+      <h1 className="login-title">कौन इस्तेमाल कर रहा है?</h1>
+      {people === null && <div className="row" style={{ justifyContent: 'center' }}><Spinner /> खोल रहे हैं…</div>}
+      {people === false && (
+        <div className="info-row" style={{ marginTop: 10 }}><CircleHelp size={20} /> लॉग इन के लिए हब से जुड़ना ज़रूरी है — खाता हब पर रहता है। जुड़कर फिर कोशिश करें।</div>
+      )}
+      {people && (
+        <>
+          <div className="who-row">
+            {people.map((w) => (
+              <button key={w.id} className={`who ${sel?.id === w.id ? 'on' : ''}`} onClick={() => { setSel(w); setMsg(null) }}>
+                <span className="who-av">{w.initial}</span>
+                <span className="who-name">{w.display_name}</span>
+              </button>
+            ))}
+            <button className="who" onClick={onNew}>
+              <span className="who-av"><Plus size={30} /></span>
+              <span className="who-name">नया</span>
+            </button>
+          </div>
+          {sel && (sel.has_pin ? (
+            <>
+              <p className={`center ${msg ? 'err' : 'muted'}`} style={{ margin: '14px 0 6px' }}>{msg || `${sel.display_name} — अपना PIN डालें`}</p>
+              <PinPad onDone={tryLogin} resetKey={`${sel.id}-${tries}`} error={tries} disabled={busy}
+                leftSlot={<button className="link" onClick={() => toast('PIN भूल गए? यूनियन / सहायक की मदद से हब पर नया PIN बनवाएँ')}>भूल गए?</button>} />
+            </>
+          ) : (
+            <div className="stack" style={{ marginTop: 16 }}>
+              <p className="center muted" style={{ margin: 0 }}>{sel.display_name} — इस खाते का PIN अभी नहीं बना</p>
+              <Btn icon={LogIn} onClick={() => tryLogin(null)} disabled={busy}>आगे बढ़ें और PIN बनाएँ</Btn>
+            </div>
+          ))}
+        </>
+      )}
+      <div className="trust-line" style={{ marginTop: 'auto', paddingTop: 16 }}><ShieldCheck size={20} /> PIN सिर्फ़ आपके पास · हब पर छिपाकर (hash) रखा जाता है</div>
+    </div>
+  )
+}
+
+function Welcome({ next, onLogin }) {
   return (
     <div className="screen">
       <div className="welcome-hero">
@@ -78,6 +210,7 @@ function Welcome({ next }) {
       <div className="trust-line"><ShieldCheck size={22} /> आपका डेटा आपके फ़ोन और हब में · बिना पूछे कुछ नहीं भेजा जाता</div>
       <div className="bottom-actions">
         <Btn icon={ArrowRight} onClick={next}>शुरू करें</Btn>
+        <Btn variant="plain" icon={LogIn} onClick={onLogin}>पहले से खाता है? लॉग इन करें</Btn>
       </div>
     </div>
   )
@@ -321,7 +454,7 @@ function Contractor({ d, up, back, progress, finish }) {
   const endH = Number(d.usual.end.slice(0, 2)) - 12
   return (
     <div className="screen">
-      <TopBar onBack={back} progress={{ ...progress, step: 6 }} speakText="ठेकेदार और मज़दूरी। जो पता हो वही भरें" />
+      <TopBar onBack={back} progress={{ ...progress, step: 7 }} speakText="ठेकेदार और मज़दूरी। जो पता हो वही भरें" />
       <h1 className="title">ठेकेदार और मज़दूरी</h1>
       <p className="subtitle">जो पता हो वही भरें, बाकी ‘पता नहीं’ रहने दें</p>
       <div className="label" style={{ marginTop: 0 }}>ठेकेदार का नाम</div>

@@ -27,6 +27,7 @@ DEMO_DIR = REPO / "data" / "demo"
 WID = "demo-sunita"
 SITE_PT = (18.5204, 73.8567)
 MONTH_FROM, MONTH_TO = "2026-10-01", "2026-10-31"
+DEMO_PIN = "1234"  # synthetic persona only
 DAYS = [date(2026, 10, d).isoformat() for d in range(1, 14)]  # 13 workdays, 01..13 Oct
 GPS_DAYS = {2, 5, 9, 11}  # day-of-month with an on-site GPS fix → L2
 PHOTO_DAY = 4  # site photo (+ site board photo) → L2
@@ -235,6 +236,7 @@ def main() -> int:
     ok(client.post("/api/workers", json={"id": WID, "display_name": "सुनीता (डेमो)", "language": "mr",
                                           "category": "unskilled", "default_break_min": 60,
                                           "consent_keep_audio": True, "gps_opt_in": True}), "worker")
+    ok(client.post(f"/api/workers/{WID}/pin", json={"pin": DEMO_PIN}), "pin")  # login (A1) with PIN 1234
     ok(client.post("/api/sites", json={
         "worker_id": WID, "name": "Example Heights, Wing B", "landmark": "SYNTHETIC demo site", "city": "पुणे",
         "state": "Maharashtra", "sphere": "state", "zone": "I", "zone_confirmed": True, "employment_sn": 11,
@@ -346,6 +348,7 @@ def main() -> int:
     print("  inbox:", [(i["kind"], i["status"]) for i in inbox])
     print("  chain:", chain)
     print("  phone: https://<LAN-IP>:8443/?demo=" + WID + "  (hub started with DATA_DIR=data/demo)")
+    print("  or log in on the phone: पहले से खाता है? → सुनीता (डेमो) → PIN", DEMO_PIN)
     return 0
 
 

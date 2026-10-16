@@ -74,11 +74,15 @@ def transcribe_wav(wav: Path, language: str) -> dict:
     except Exception as e:  # missing model dir, CUDA not present, etc.
         raise ASRUnavailable(f"ASR_MODEL_LOAD_FAILED: {type(e).__name__}: {e}") from e
 
+    # Bounded decoding: on noisy/unclear audio the default temperature-fallback ladder and conditioning on
+    # previous text made a 5 s clip loop for minutes on a 2-core CPU. One greedy pass, no word timestamps.
     segs, info = model.transcribe(
         str(wav),
         language=None if language == "auto" else language,
         beam_size=settings.asr_beam_size,
-        word_timestamps=True,
+        temperature=0.0,
+        condition_on_previous_text=False,
+        word_timestamps=False,
         vad_filter=True,
     )
     segments = []

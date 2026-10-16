@@ -54,8 +54,36 @@ export async function apiForm(path, form, { timeoutMs = 60000 } = {}) {
 }
 
 export const getEntry = (id) => apiJson('GET', `/api/entries/${id}`)
-// Processing runs ASR + the LLM on the hub; on the CPU tier this can take 1–2 minutes.
-export const processEntry = (id) => apiJson('POST', `/api/entries/${id}/process`, null, { timeoutMs: 300000 })
+// Processing runs ASR + the LLM on the hub (1–2 minutes on the CPU tier). The hub does it in the background,
+// one note at a time; the phone only asks every few seconds, so a slow model, a proxy timeout or a sleeping
+// phone never loses the work and retries never start a second model run.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+export async function processEntry(id, { onWait, maxMs = 20 * 60000 } = {}) {
+  await apiJson('POST', `/api/entries/${id}/process?async=1`, null, { timeoutMs: 20000 })
+  const t0 = Date.now()
+  let netFails = 0
+  for (;;) {
+    let e
+    try {
+      e = await apiJson('GET', `/api/entries/${id}`, null, { timeoutMs: 15000 })
+      netFails = 0
+    } catch (err) {
+      if (!(err instanceof NetworkError) || ++netFails >= 5) throw err
+      await sleep(4000)
+      continue
+    }
+    if (!e.processing) {
+      return {
+        entry_id: id, status: e.status, transcript: e.transcript, fields: e.reconciled?.fields || null,
+        summary: e.reconciled?.summary || null, error: e.status === 'saved' ? (e.error || 'NOT_PROCESSED') : null,
+        reply: e.reply || null, tier: 'server',
+      }
+    }
+    onWait?.(e.queue_position)
+    if (Date.now() - t0 > maxMs) throw new ApiError(504, 'PROCESSING_TIMEOUT')
+    await sleep(3000)
+  }
+}
 export const confirmEntry = (id, fields) => apiJson('POST', `/api/entries/${id}/confirm`, { fields })
 export const ledger = (workerId, from, to) =>
   apiJson('GET', `/api/ledger?worker_id=${encodeURIComponent(workerId)}${from ? `&date_from=${from}` : ''}${to ? `&date_to=${to}` : ''}`)

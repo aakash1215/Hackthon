@@ -14,10 +14,10 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
-from . import asr, corroboration, db, events, extract, normalize, reconcile
+from . import asr, corroboration, db, events, extract, normalize, processing, reconcile
 from .config import settings
 from .contracts import (
     DATE_FIELDS, ENTRY_KINDS, ENUM_FIELDS, INT_FIELDS, KIND_FIELDS, MONEY_FIELDS, REPLY_INTENTS, SPAN_INT_FIELDS,
@@ -356,6 +356,8 @@ def create_entry(
             events.append(c, "GPS_CAPTURED", {"entry_id": entry_id, "lat": lat, "lon": lon,
                                               "accuracy_m": gps_accuracy_m}, worker_id, gps_ts)
 
+    if processing.active() and not consent_refused:
+        processing.enqueue(entry_id)  # saved + hashed above; the models run in the background, one at a time
     return {
         "entry_id": entry_id,
         "audio_sha256": audio_sha,
@@ -373,7 +375,7 @@ def get_entry(entry_id: str):
         e = _row(c, "entries", entry_id)
     if not e:
         raise HTTPException(404, "ENTRY_NOT_FOUND")
-    return e
+    return {**e, "processing": processing.status(entry_id), "queue_position": processing.position(entry_id)}
 
 
 def _entry_or_404(c, entry_id: str) -> dict:
@@ -384,6 +386,20 @@ def _entry_or_404(c, entry_id: str) -> dict:
 
 
 @router.post("/api/entries/{entry_id}/process")
+def process_endpoint(entry_id: str, background: bool = Query(False, alias="async")):
+    """`?async=1` (the phone): queue it and return at once; poll GET /api/entries/{id}. Without it: run now."""
+    if background and processing.active():
+        with db.read() as c:
+            e = _entry_or_404(c, entry_id)
+        if e["status"] != "saved" or e.get("error") == "CONSENT_REFUSED":
+            return {"entry_id": entry_id, "status": e["status"], "processing": None}
+        return {"entry_id": entry_id, "status": "saved", "processing": processing.enqueue(entry_id),
+                "queue_position": processing.position(entry_id)}
+    if processing.status(entry_id):
+        raise HTTPException(409, "PROCESSING")  # the background worker has it: never run the models twice
+    return process_entry(entry_id)
+
+
 def process_entry(entry_id: str):
     """ASR → normalize → extract → reconcile. Any model failure leaves the entry `saved`."""
     with db.read() as c:

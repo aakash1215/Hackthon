@@ -13,16 +13,22 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import api, db, evidence_api, telegram_bot
+from . import api, auth, db, evidence_api, processing, telegram_bot
 from .config import REPO_ROOT, settings
 
 log = logging.getLogger("apna_hisaab")
+if not log.handlers:  # app logs (processing queue, Telegram) next to uvicorn's in the hub log
+    _h = logging.StreamHandler()
+    _h.setFormatter(logging.Formatter("%(asctime)s %(name)s %(levelname)s: %(message)s", "%H:%M:%S"))
+    log.addHandler(_h)
+    log.setLevel(logging.INFO)
 FRONTEND_DIST = REPO_ROOT / "frontend" / "dist"
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     db.init_db()  # WAL SQLite; idempotent
+    processing.start()  # one background worker for ASR + LLM; re-queues anything still `saved`
     if settings.telegram_configured:  # long polling in this event loop; retries quietly while offline
         telegram_bot.RUNTIME.start()
     yield
@@ -30,6 +36,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Apna Hisaab", version="0.1.0", lifespan=lifespan)
+app.include_router(auth.router)  # first: /api/workers/directory must win over /api/workers/{id}
 app.include_router(api.router)  # before the SPA catch-all below, so /api/* routes win
 app.include_router(evidence_api.router)
 app.include_router(telegram_bot.router)
