@@ -41,16 +41,18 @@ for an app that needs typing.
 1. **Speak, don't type.** One tap records a note ("सकाळी नऊ ते संध्याकाळी सात…"). An optional photo and opt-in GPS are added.
 2. **Save + hash first.** The phone computes SHA-256 of the original bytes and keeps the note in IndexedDB.
    **With no internet the note still saves**, and it uploads later; the hub must report the same hash.
-3. **Two readers.** Open-weight ASR → LLM extraction (`{value, evidence}`, where evidence must be an exact
+3. **Processed in the background, one note at a time.** The hub queues each upload right after it is hashed, so a
+   slow CPU, a proxy timeout or a sleeping phone never loses the work. The phone just checks back.
+4. **Two readers.** Open-weight ASR → LLM extraction (`{value, evidence}`, where evidence must be an exact
    transcript substring) **and** a deterministic Hindi/Marathi number/time/date parser. Agreement shows green;
    one reader or a disagreement shows amber; nothing found shows red. The worker confirms; only confirmed values count.
-4. **Ledger + hisaab.** Hash-chained events (`verify()` reports the event where a tamper happened). The wage engine uses
+5. **Ledger + hisaab.** Hash-chained events (`verify()` reports the event where a tamper happened). The wage engine uses
    exact rational arithmetic on the provenance-stamped rate pack (Maharashtra SN 11, Jul–Dec 2026). It reports the
    shortfall estimate, overtime, Form II heads, and the citation with its verification status.
-5. **Corroboration level per day** (deterministic, `corroboration.py`):
+6. **Corroboration level per day** (deterministic, `corroboration.py`):
    **L1** worker's record · **L2** + on-site evidence (photo / GPS within 300 m) · **L3** + another person
    (co-worker or thekedar). A thekedar dispute is shown as a flag, never hidden. *Not a legal score.*
-6. **The thekedar's side.**
+7. **The thekedar's side.**
    * **Consented recording:** a notice ("यह बातचीत रिकॉर्ड की जा रही है…") plays automatically, can't be skipped,
      and is on the tape. If he refuses, only the notice is kept. His statement is compared with the ledger →
      `DAYS_DIFF`, `RATE_BELOW_MIN`, `OT_NOT_COUNTED`, `DEDUCTION_DISPUTED`, `PAID_DIFF`.
@@ -60,9 +62,9 @@ for an app that needs typing.
      template updates (daily update, payment thanks, summary). His replies are saved with **Telegram's
      server timestamp** and hashed. "Somvaar ko 5000 dunga" → a promise card the worker confirms. Abuse or threats →
      **no reply**, automatic messages pause, and the worker sees help numbers.
-7. **Co-worker confirmation** with a spoken consent prompt and a required consent tick. Witness audio is never shared
+8. **Co-worker confirmation** with a spoken consent prompt and a required consent tick. Witness audio is never shared
    by default and names can be redacted.
-8. **Evidence packet:** Jinja2 → PDF (Chromium) with Noto Sans Devanagari embedded. It contains a dues statement, a day table
+9. **Evidence packet:** Jinja2 → PDF (Chromium) with Noto Sans Devanagari embedded. It contains a dues statement, a day table
    with a corroboration column, photos with SHA-256/device time/GPS, the thekedar's words and Telegram log,
    co-worker confirmations, an evidence index and the chain head, plus `bundle.zip` with a SHA-256 manifest.
 
@@ -111,10 +113,20 @@ disagreements turn amber.
 
 ## Measured latencies (this machine)
 
-<!-- BENCHMARK -->
+Intel Core i3-6006U (2 cores, 2015), 8 GB RAM, **no GPU**: the CPU tier, measured on an idle machine.
 
-Full table and method: [docs/benchmark.md](docs/benchmark.md). End-to-end on the CPU tier, a workday note takes
-roughly 20–80 s from upload to confirm card. Saving is instant and works offline.
+| Step | Time |
+|---|---|
+| SHA-256 of a 1 MB recording | 7 ms |
+| ASR faster-whisper-small int8, 9.6 s clip | 21.1 s (RTF 2.2) |
+| Normalizer + reconciler | 1 ms |
+| LLM extraction (Qwen3-1.7B Q4_K_M), per note | 29–80 s (11 s with a cached prompt) |
+| Wage engine, 13 days | 3 ms |
+| Evidence packet → PDF | 6.2 s |
+
+A note is **saved and hashed instantly** (also offline). The confirm card is ready about **1–2 minutes** later; the
+hub processes notes in the background, one at a time. The GPU tier is configured but was not measured (no GPU on
+build day). Method and details: [docs/benchmark.md](docs/benchmark.md).
 
 ## Setup
 
@@ -143,7 +155,8 @@ Venue Wi-Fi often blocks phone-to-laptop traffic and sometimes `api.telegram.org
 hotspot**, or set `TELEGRAM_PROXY`.
 
 **Demo data:** `bash scripts/demo_reset.sh` rebuilds the synthetic persona *Sunita* in `data/demo/`, restarts the
-hub on it, and prints the phone URL `https://<LAN-IP>:8443/?demo=demo-sunita`.
+hub on it, and prints the phone URL `https://<LAN-IP>:8443/?demo=demo-sunita` (or log in as सुनीता (डेमो), PIN `1234`).
+The 3-minute demo script is in [docs/demo.md](docs/demo.md).
 
 **Tests:** `pytest` (backend) · `scripts/e2e_pwa.py`, `scripts/e2e_p3.py`, `scripts/e2e_p4.py` (headless phone
 E2E against the running hub) · `scripts/benchmark.py` (latencies).
@@ -160,6 +173,9 @@ packet prints it.
 
 ## Privacy and consent
 
+* Each worker sets a **4-digit PIN** (stored on the hub only as a salted PBKDF2 hash; 5 wrong tries lock for
+  5 minutes). Logging in on another phone: "पहले से खाता है?" → pick the name → PIN. Logout clears only the phone.
+  The PIN gates the app; the hub API itself is a LAN service without per-request auth in this build.
 * GPS is **opt-in** during onboarding. Coordinates are shown to the worker and stored with the entry or photo.
 * Recording anyone other than the worker always starts with a notice or consent prompt. There is no covert recording.
   The hub rejects thekedar or co-worker audio uploaded without `notice_played`.
@@ -174,7 +190,8 @@ packet prints it.
 * On the CPU tier, ASR + LLM take 20–80 s per note, and the 1.7B LLM sometimes misreads stance or numbers. That is why
   every number is checked by code and confirmed by the worker, and hostile messages are caught by a word guard.
 * Two speakers plus site noise make recordings of the thekedar hard for ASR. The worker confirms every number.
-* Telegram stands in for WhatsApp. PIN lock and multi-profile were cut for the hackathon build.
+* Telegram stands in for WhatsApp. On-device AI (P5: Whisper/Qwen in the browser) was cut: on the 2-core dev
+  laptop it competed with the hub for CPU; offline capture works without it (notes are processed when the hub is reachable).
 
 ## Roadmap
 

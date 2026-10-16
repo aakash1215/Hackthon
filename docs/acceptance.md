@@ -1,6 +1,6 @@
 # Acceptance checks (BUILD_PLAN §11 deltas + hard rules)
 
-Checked on build day, 16 Oct 2026. "pytest" = `cd backend && .venv/Scripts/python -m pytest -q` (101 tests).
+Checked on build day, 16 Oct 2026. "pytest" = `cd backend && .venv/Scripts/python -m pytest -q` (105 tests).
 "E2E" = headless phone runs (Chromium, 360–390 px, fake mic/GPS) against the running hub.
 
 | # | Check | How it was verified | Result |
