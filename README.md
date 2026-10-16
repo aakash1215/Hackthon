@@ -2,6 +2,19 @@
 
 **A wage-theft evidence builder for migrant construction workers** (OpenForge Hackathon, Track 1, PS07).
 
+## 🧠 Local AI models we use (open-weight, run on our own hub)
+
+| Job | Model | Size / quant | Runtime | License |
+|---|---|---|---|---|
+| **Speech → text** (Marathi / Hindi / Hinglish) | [faster-whisper-small](https://huggingface.co/Systran/faster-whisper-small) (CPU) · [whisper-large-v3-turbo](https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2) (GPU) | 244 M int8 · 809 M fp16 | CTranslate2 / faster-whisper | MIT |
+| **Field extraction** (`{value, evidence}` only, no maths) | [Qwen3-1.7B](https://huggingface.co/Qwen/Qwen3-1.7B) (CPU) · [Qwen3-4B-Instruct-2507](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507) (GPU) | GGUF Q4_K_M | [llama.cpp](https://github.com/ggml-org/llama.cpp) `llama-server` | Apache-2.0 |
+
+- Switched by `.env` only (`ASR_MODEL`, `ASR_DEVICE`, `LLM_MODEL`, `LLM_BASE_URL`); nothing is hardcoded.
+- **No closed AI API by default.** The optional "तेज़" ChatGPT mode is off unless `CHAT_API_KEY` is set *and*
+  the worker turns it on; it always falls back to the local models ([details](#optional-cloud-engine-disclosed)).
+- The LLM only extracts and classifies. **All wage arithmetic is done by code** (`backend/app/wage_engine.py`).
+- Full table, measured latencies and model audit: [Models](#models-all-open-weight) · [MODEL_AUDIT.md](MODEL_AUDIT.md).
+
 A worker speaks a short daily note in Marathi, Hindi or Hinglish. The app saves and hashes the audio before
 anything else, reads it with **open-weight** speech and language models, and the worker confirms each field.
 Confirmed days go into a hash-chained ledger. A deterministic wage engine then compares work and pay against
@@ -130,6 +143,16 @@ Intel Core i3-6006U (2 cores, 2015), 8 GB RAM, **no GPU**: the CPU tier, measure
 A note is **saved and hashed instantly** (also offline). The confirm card is ready about **1–2 minutes** later; the
 hub processes notes in the background, one at a time. The GPU tier is configured but was not measured (no GPU on
 build day). Method and details: [docs/benchmark.md](docs/benchmark.md).
+
+## Model audit (KOALA)
+
+We audit our own open-weight model with [KOALA](https://github.com/DomAiynLabs/KOALA) (Apache-2.0). It runs static
+checks on the model documentation in [`audit/`](audit/) and live probes against our llama-server (prompt injection,
+jailbreak, hallucination, sycophancy, bias and leakage), then maps the results to the **India DPDP Act 2023**,
+the EU AI Act and the NIST AI RMF. Result: **[MODEL_AUDIT.md](MODEL_AUDIT.md)**. Full JSON, HTML and a SHA-256
+manifest are in [`docs/model-audit/`](docs/model-audit/). Re-run it with `bash scripts/audit_model.sh` (KOALA
+installs into its own `.venv-koala`). This is evidence and gap analysis, not legal certification. The known gaps
+(no bias assessment yet, no grievance route, no self-service hub erasure) are listed in the report.
 
 ## Setup
 

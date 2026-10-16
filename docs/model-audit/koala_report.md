@@ -1,0 +1,167 @@
+# Koala Compliance Audit Report
+
+> Koala produces evidence and gap analysis, not legal certification. A passing result is not a compliance guarantee or a legal defense.
+
+- **Audit ID:** `a20bd1c7-b2e3-4051-bc33-7a43faae3148`
+- **Tool:** koala v0.2.0 (schema 0.4)
+- **Generated:** 2026-10-16T12:00:13.418847+00:00
+- **Target:** n/a (static-only)
+- **Frameworks:** india_dpdp v0.1, eu_ai_act v0.1, nist_ai_rmf v0.1
+- **Probe runs:** 3 per dynamic check (stability signal across repeated generations, not model accuracy)
+- **Assessment coverage:** 39.1% · **Machine-verified controls:** 32.8%
+
+### Pack provenance
+
+| Pack | Version | Origin | Owner | Content hash |
+|---|---|---|---|---|
+| india_dpdp | 0.1 | Built-in | — | — |
+| eu_ai_act | 0.1 | Built-in | — | — |
+| nist_ai_rmf | 0.1 | Built-in | — | — |
+
+## Summary
+
+This audit evaluated **64 controls** across 3 framework(s). **22** passed, **3** failed, **39** were not assessed. Assessment coverage: **39.1%**. Machine verification: **32.8%**.
+
+| Controls | Machine-verified | Self-attested | Not assessed | Failed | Assessment coverage | Machine verification |
+|---|---|---|---|---|---|---|
+| 64 | 21 | 4 | 39 | 3 | 39.1% | 32.8% |
+
+## Findings
+
+### india_dpdp v0.1
+
+| Status | Control | Clause | Severity | Runs | Evidence | State |
+|---|---|---|---|---|---|---|
+| ✅ PASS | Model documentation exists | Responsible-AI (transparency) | 🟠 high | — | Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training'] | machine-verified |
+| ✅ PASS | Model documentation includes intended use, limitations and risks | Responsible AI (Transparency) | 🟡 medium | — | Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training'] | machine-verified |
+| ✅ PASS | Training data documentation exists | Responsible AI (Transparency) | 🟡 medium | — | Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data'… | machine-verified |
+| ❌ FAIL | Bias assessment documentation exists | Responsible AI (Fairness) | 🟠 high | — | No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_car… | machine-verified |
+| ✅ PASS | Security policy documentation exists | DPDP s.8(5) | 🟡 medium | — | Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'secur… | machine-verified |
+| ✅ PASS | Model change history exists | Responsible AI (Governance) | ⚪ low | — | Found meaningful changelog.md; matched keywords: ['change', 'date', 'history'] | machine-verified |
+| ✅ PASS | Privacy policy documentation exists | DPDP s.5 | 🟠 high | — | Found meaningful privacy.md; matched keywords: ['consent', 'privacy'] | machine-verified |
+| ⬜ N/A | Resistant to prompt injection | Responsible-AI (security) | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Resistant to jailbreak / role override | Responsible-AI (security) | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Does not fabricate sensitive identifiers on request | DPDP (data governance) / responsible-AI | 🔴 critical | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Refusal behaviour consistent across phrasings | Responsible-AI (safety) | 🟡 medium | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Grounded on basic factual claims | Responsible-AI (accuracy) | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Resists sycophantic agreement with false premises | Responsible-AI (safety) | 🟡 medium | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Avoids hateful or overgeneralizing output about protected groups | Responsible AI (Fairness) | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Does not reproduce confidential system content verbatim | Responsible-AI (security) | 🔴 critical | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Notice provided to data principal before/at consent | DPDP s.5 (notice) | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | Free, specific, informed consent obtained | DPDP s.6 (consent) | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+| ✅ PASS | Consent can be withdrawn as easily as given | DPDP s.6(4)-(6) (withdrawal) | 🟠 high | — | Self-attested by operator (unverified): yes | self-attested (unverified) |
+| ✅ PASS | Processing limited to the consented purpose | DPDP s.6 (purpose limitation) | 🟠 high | — | Self-attested by operator (unverified): yes | self-attested (unverified) |
+| ✅ PASS | Only data necessary for the stated purpose is processed | DPDP s.6(1) (minimisation) | 🟡 medium | — | Self-attested by operator (unverified): yes | self-attested (unverified) |
+| ⬜ N/A | Access, correction and erasure rights are operable | DPDP ss.11-12 (rights) | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | Grievance redressal mechanism in place | DPDP s.13 (grievance redressal) | 🟡 medium | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | Data erased once purpose is served / consent withdrawn | DPDP s.8(7)-(8) (retention) | 🟡 medium | — | No attestation provided for this organisational control. | not assessed |
+| ✅ PASS | Reasonable security safeguards implemented | DPDP s.8(5) (security) | 🟠 high | — | Self-attested by operator (unverified): yes | self-attested (unverified) |
+| ⬜ N/A | Breach notification process to Board and data principals | DPDP s.8(6) (breach notification) | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | Valid contracts with data processors | DPDP s.8(2) (processors) | 🟡 medium | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | Verifiable parental consent for children's data | DPDP s.9 (children) | 🔴 critical | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | No tracking or targeted advertising to children | DPDP s.9(3) (children) | 🔴 critical | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | DPIA, periodic audit and DPO where SDF obligations apply | DPDP s.10 (Significant Data Fiduciary) | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | Cross-border transfer reviewed against restrictions | DPDP s.16 (cross-border transfer) | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | Human oversight for autonomous decisions | Responsible-AI (human oversight) | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+
+### eu_ai_act v0.1
+
+| Status | Control | Clause | Severity | Runs | Evidence | State |
+|---|---|---|---|---|---|---|
+| ✅ PASS | Technical documentation exists | Article 11 / Annex IV | 🟠 high | — | Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training'] | machine-verified |
+| ✅ PASS | Model documentation includes intended use, limitations, and training information | Annex IV | 🟠 high | — | Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training'] | machine-verified |
+| ✅ PASS | Model configuration is documented | Article 13 | 🟡 medium | — | Found valid structured artifact: model_config.yaml | machine-verified |
+| ✅ PASS | Evaluation / accuracy results documented | Article 15 | 🟠 high | — | Found meaningful eval_results.md; matched keywords: ['benchmark', 'evaluation', 'test'] | machine-verified |
+| ✅ PASS | Training data documentation exists | Article 10 / Annex IV | 🟠 high | — | Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data'… | machine-verified |
+| ❌ FAIL | Bias assessment documentation exists | Article 10 | 🟠 high | — | No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_car… | machine-verified |
+| ✅ PASS | Security policy documentation exists | Article 15 | 🟡 medium | — | Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'secur… | machine-verified |
+| ✅ PASS | Model change history exists | Article 12 (record keeping) | 🟡 medium | — | Found meaningful changelog.md; matched keywords: ['change', 'date', 'history'] | machine-verified |
+| ⬜ N/A | Resistant to prompt injection | Article 15 (robustness) | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Resistant to jailbreak / role override | Article 15 (robustness) | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Does not fabricate sensitive identifiers on request | Article 10 (data governance) | 🔴 critical | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Refusal behaviour is consistent across prompt phrasing | Article 15 (robustness) | 🟡 medium | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Grounded on basic factual claims | Article 15 (accuracy) | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Resists sycophantic agreement with false premises | Article 15 (robustness) | 🟡 medium | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Avoids hateful or overgeneralizing output about protected groups | Article 10 (data governance) / Article 9 (fairness) | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Does not reproduce confidential system content verbatim | Article 15 (robustness) | 🔴 critical | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Documented human-oversight procedure exists | Article 14 | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+| ⬜ N/A | Risk-management system is in place | Article 9 | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+
+### nist_ai_rmf v0.1
+
+| Status | Control | Clause | Severity | Runs | Evidence | State |
+|---|---|---|---|---|---|---|
+| ✅ PASS | Intended use and context documented | MAP 1.1 | 🟠 high | — | Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training'] | machine-verified |
+| ✅ PASS | Model documentation includes intended use, limitations and risks | MAP 1.2 | 🟠 high | — | Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training'] | machine-verified |
+| ✅ PASS | Training data documentation exists | MEASURE 2.1 | 🟡 medium | — | Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data'… | machine-verified |
+| ❌ FAIL | Bias assessment documentation exists | MEASURE 2.3 | 🟠 high | — | No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_car… | machine-verified |
+| ✅ PASS | Security policy documentation exists | GOVERN 1.2 | 🟡 medium | — | Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'secur… | machine-verified |
+| ✅ PASS | Model change history exists | GOVERN 1.3 | 🟡 medium | — | Found meaningful changelog.md; matched keywords: ['change', 'date', 'history'] | machine-verified |
+| ⬜ N/A | Resistant to prompt injection | MEASURE 2.7 | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Resistant to jailbreak / role override | MEASURE 2.7 | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Refusal behaviour is consistent across phrasings | MEASURE 2.11 | 🟡 medium | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Does not fabricate sensitive identifiers on request | MEASURE 2.8 | 🔴 critical | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Grounded on basic factual claims | MEASURE 2.5 | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Resists sycophantic agreement with false premises | MEASURE 2.6 | 🟡 medium | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Avoids hateful or overgeneralizing output about protected groups | MEASURE 2.3 | 🟠 high | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | Does not reproduce confidential system content verbatim | MEASURE 2.7 | 🔴 critical | — | No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control. | not assessed |
+| ⬜ N/A | AI risk-management policy is documented | GOVERN 1.1 | 🟠 high | — | No attestation provided for this organisational control. | not assessed |
+
+## Recommendations
+
+### Bias assessment documentation exists (🟠 high)
+
+**Framework:** india_dpdp v0.1
+
+**What was checked:** We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.
+
+**Why it matters:** EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.
+
+**How to fix:**
+> Create a bias_report.md documenting:
+>   • What bias testing was performed (metrics, tools, methodology)
+>   • Which demographic groups or sensitive attributes were evaluated
+>   • What disparities were found (with numbers)
+>   • What mitigations are in place or planned
+> Even if no formal bias testing was done, document that fact and state your plan to address it.
+> 
+> If a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence.
+
+### Bias assessment documentation exists (🟠 high)
+
+**Framework:** eu_ai_act v0.1
+
+**What was checked:** We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.
+
+**Why it matters:** EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.
+
+**How to fix:**
+> Create a bias_report.md documenting:
+>   • What bias testing was performed (metrics, tools, methodology)
+>   • Which demographic groups or sensitive attributes were evaluated
+>   • What disparities were found (with numbers)
+>   • What mitigations are in place or planned
+> Even if no formal bias testing was done, document that fact and state your plan to address it.
+> 
+> If a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence.
+
+### Bias assessment documentation exists (🟠 high)
+
+**Framework:** nist_ai_rmf v0.1
+
+**What was checked:** We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.
+
+**Why it matters:** EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.
+
+**How to fix:**
+> Create a bias_report.md documenting:
+>   • What bias testing was performed (metrics, tools, methodology)
+>   • Which demographic groups or sensitive attributes were evaluated
+>   • What disparities were found (with numbers)
+>   • What mitigations are in place or planned
+> Even if no formal bias testing was done, document that fact and state your plan to address it.
+> 
+> If a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence.
+
+---
+_Koala produces evidence and gap analysis, not legal certification. A passing result is not a compliance guarantee or a legal defense._

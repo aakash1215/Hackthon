@@ -1,0 +1,11 @@
+# Operator attestations for KOALA's organisational (non-machine-checkable) controls.
+# Only what the app really does is set to true. Anything omitted shows as "not assessed" in the report.
+# See privacy.md for the reasons and the known gaps.
+attestations:
+  # India DPDP 2023
+  india-dpdp-consent-withdrawal: true   # Settings: "keep my voice" toggle off at any time; logout clears the phone
+  india-dpdp-data-minimisation: true    # GPS opt-in only; just the work/pay fields the record needs
+  india-dpdp-purpose-limitation: true   # data is used only to build the worker's own record and evidence file
+  india-dpdp-security-safeguards: true  # SHA-256 + hash chain, hashed PIN, HTTPS on LAN, secrets never committed
+  # Not attested (gaps): notice (no grievance route in it), consent (sign-up requires agreeing),
+  # rights-access-correction (no self-service hub erasure), grievance, retention-erasure.

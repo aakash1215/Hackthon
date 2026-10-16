@@ -1,0 +1,25 @@
+# Runtime configuration of the audited models (values from .env.example, scripts/start_llm.sh, backend/app/).
+llm:
+  model: Qwen3-1.7B-Q4_K_M            # LLM_MODEL
+  format: gguf
+  quantization: Q4_K_M
+  base_model: Qwen/Qwen3-1.7B
+  license: Apache-2.0
+  runtime: llama.cpp llama-server (b11678)
+  endpoint: http://127.0.0.1:8080/v1   # LLM_BASE_URL (OpenAI-compatible)
+  context_tokens: 4096                 # -c 4096
+  parallel_slots: 1                    # -np 1
+  temperature: 0
+  output: json_schema                  # closed schema per record kind (backend/app/contracts.py)
+  fine_tuned: false
+asr:
+  model: faster-whisper-small          # ASR_MODEL
+  license: MIT
+  device: cpu                          # ASR_DEVICE (cuda on a GPU box)
+  compute_type: int8                   # ASR_COMPUTE_TYPE
+  beam_size: 1                         # ASR_BEAM_SIZE
+  temperature: 0.0
+  vad_filter: true
+optional_closed_engine:
+  enabled_by_default: false            # CHAT_API_KEY + worker opt-in; TG_AGENT=chatgpt for Telegram
+  falls_back_to: llm

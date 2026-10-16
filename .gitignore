@@ -17,6 +17,7 @@ media/
 __pycache__/
 *.pyc
 .venv/
+.venv-koala/
 .pytest_cache/
 
 # node

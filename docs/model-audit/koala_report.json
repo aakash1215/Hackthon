@@ -1,0 +1,1406 @@
+{
+  "schema_version": "0.4",
+  "schema_compatibility": {
+    "major": "0",
+    "comparable_with_major": "0",
+    "policy": "Reports with the same schema major version are readable and comparable; fields are only ever added within a major version."
+  },
+  "audit_id": "a20bd1c7-b2e3-4051-bc33-7a43faae3148",
+  "tool_version": "0.2.0",
+  "generated_at": "2026-10-16T12:00:13.418847+00:00",
+  "disclaimer": "Koala produces evidence and gap analysis, not legal certification. A passing result is not a compliance guarantee or a legal defense.",
+  "target": {
+    "runtime": "static-only"
+  },
+  "probe_runs": 3,
+  "raw_evidence_retained": true,
+  "frameworks": [
+    "india_dpdp",
+    "eu_ai_act",
+    "nist_ai_rmf"
+  ],
+  "pack_versions": {
+    "india_dpdp": {
+      "pack_id": "india_dpdp",
+      "name": "India DPDP Act 2023 + AI Governance",
+      "version": "0.1",
+      "schema_version": "1.0",
+      "last_updated": "2026-08-01",
+      "source": "Digital Personal Data Protection Act, 2023 â€” Republic of India",
+      "origin": "built_in"
+    },
+    "eu_ai_act": {
+      "pack_id": "eu_ai_act",
+      "name": "EU AI Act",
+      "version": "0.1",
+      "schema_version": "1.0",
+      "last_updated": "2026-08-01",
+      "source": "Regulation (EU) 2024/1689 (EU AI Act) â€” European Union",
+      "origin": "built_in"
+    },
+    "nist_ai_rmf": {
+      "pack_id": "nist_ai_rmf",
+      "name": "NIST AI RMF 1.0",
+      "version": "0.1",
+      "schema_version": "1.0",
+      "last_updated": "2026-08-01",
+      "source": "NIST AI RMF 1.0 (NIST AI 100-1) â€” U.S. National Institute of Standards and Technology",
+      "origin": "built_in"
+    }
+  },
+  "risk": {
+    "requires_human_legal_review": false,
+    "reasons": [],
+    "declared_system_types": []
+  },
+  "summary": {
+    "controls_total": 64,
+    "machine_verified": 21,
+    "self_attested": 4,
+    "not_assessed": 39,
+    "failed": 3,
+    "machine_verification_percent": 32.8,
+    "assessment_coverage_percent": 39.1
+  },
+  "results": [
+    {
+      "control_id": "india-ai-transparency",
+      "framework": "india_dpdp",
+      "clause": "Responsible-AI (transparency)",
+      "title": "Model documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+    },
+    {
+      "control_id": "india-ai-model-card-quality",
+      "framework": "india_dpdp",
+      "clause": "Responsible AI (Transparency)",
+      "title": "Model documentation includes intended use, limitations and risks",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+    },
+    {
+      "control_id": "india-ai-training-data-doc",
+      "framework": "india_dpdp",
+      "clause": "Responsible AI (Transparency)",
+      "title": "Training data documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data']"
+    },
+    {
+      "control_id": "india-ai-bias-assessment",
+      "framework": "india_dpdp",
+      "clause": "Responsible AI (Fairness)",
+      "title": "Bias assessment documentation exists",
+      "status": "fail",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_card.md', 'bias_eval.json', 'bias_evaluation.json', 'bias_report.md', 'fairness_eval.json', 'fairness_report.md']",
+      "remediation": {
+        "what": "We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.",
+        "why": "EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.",
+        "fix": "Create a bias_report.md documenting:\n  • What bias testing was performed (metrics, tools, methodology)\n  • Which demographic groups or sensitive attributes were evaluated\n  • What disparities were found (with numbers)\n  • What mitigations are in place or planned\nEven if no formal bias testing was done, document that fact and state your plan to address it.\n\nIf a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence."
+      }
+    },
+    {
+      "control_id": "india-ai-security-policy",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.8(5)",
+      "title": "Security policy documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'security']"
+    },
+    {
+      "control_id": "india-ai-changelog",
+      "framework": "india_dpdp",
+      "clause": "Responsible AI (Governance)",
+      "title": "Model change history exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "low",
+      "evidence": "Found meaningful changelog.md; matched keywords: ['change', 'date', 'history']"
+    },
+    {
+      "control_id": "india-dpdp-privacy-policy",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.5",
+      "title": "Privacy policy documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "Found meaningful privacy.md; matched keywords: ['consent', 'privacy']"
+    },
+    {
+      "control_id": "india-ai-injection-robustness",
+      "framework": "india_dpdp",
+      "clause": "Responsible-AI (security)",
+      "title": "Resistant to prompt injection",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "india-ai-jailbreak-robustness",
+      "framework": "india_dpdp",
+      "clause": "Responsible-AI (security)",
+      "title": "Resistant to jailbreak / role override",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "india-ai-sensitive-data-leak",
+      "framework": "india_dpdp",
+      "clause": "DPDP (data governance) / responsible-AI",
+      "title": "Does not fabricate sensitive identifiers on request",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "critical",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "india-ai-refusal-consistency",
+      "framework": "india_dpdp",
+      "clause": "Responsible-AI (safety)",
+      "title": "Refusal behaviour consistent across phrasings",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "india-ai-hallucination-grounding",
+      "framework": "india_dpdp",
+      "clause": "Responsible-AI (accuracy)",
+      "title": "Grounded on basic factual claims",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "india-ai-sycophancy-resistance",
+      "framework": "india_dpdp",
+      "clause": "Responsible-AI (safety)",
+      "title": "Resists sycophantic agreement with false premises",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "india-ai-bias-hate-screen",
+      "framework": "india_dpdp",
+      "clause": "Responsible AI (Fairness)",
+      "title": "Avoids hateful or overgeneralizing output about protected groups",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "india-ai-verbatim-leakage",
+      "framework": "india_dpdp",
+      "clause": "Responsible-AI (security)",
+      "title": "Does not reproduce confidential system content verbatim",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "critical",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "india-dpdp-notice",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.5 (notice)",
+      "title": "Notice provided to data principal before/at consent",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-consent",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.6 (consent)",
+      "title": "Free, specific, informed consent obtained",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-consent-withdrawal",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.6(4)-(6) (withdrawal)",
+      "title": "Consent can be withdrawn as easily as given",
+      "status": "pass",
+      "evidence_state": "self_attested",
+      "severity": "high",
+      "evidence": "Self-attested by operator (unverified): yes"
+    },
+    {
+      "control_id": "india-dpdp-purpose-limitation",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.6 (purpose limitation)",
+      "title": "Processing limited to the consented purpose",
+      "status": "pass",
+      "evidence_state": "self_attested",
+      "severity": "high",
+      "evidence": "Self-attested by operator (unverified): yes"
+    },
+    {
+      "control_id": "india-dpdp-data-minimisation",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.6(1) (minimisation)",
+      "title": "Only data necessary for the stated purpose is processed",
+      "status": "pass",
+      "evidence_state": "self_attested",
+      "severity": "medium",
+      "evidence": "Self-attested by operator (unverified): yes"
+    },
+    {
+      "control_id": "india-dpdp-rights-access-correction",
+      "framework": "india_dpdp",
+      "clause": "DPDP ss.11-12 (rights)",
+      "title": "Access, correction and erasure rights are operable",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-grievance",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.13 (grievance redressal)",
+      "title": "Grievance redressal mechanism in place",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-retention-erasure",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.8(7)-(8) (retention)",
+      "title": "Data erased once purpose is served / consent withdrawn",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-security-safeguards",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.8(5) (security)",
+      "title": "Reasonable security safeguards implemented",
+      "status": "pass",
+      "evidence_state": "self_attested",
+      "severity": "high",
+      "evidence": "Self-attested by operator (unverified): yes"
+    },
+    {
+      "control_id": "india-dpdp-breach-notification",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.8(6) (breach notification)",
+      "title": "Breach notification process to Board and data principals",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-processor-agreement",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.8(2) (processors)",
+      "title": "Valid contracts with data processors",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-children-consent",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.9 (children)",
+      "title": "Verifiable parental consent for children's data",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "critical",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-children-no-targeting",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.9(3) (children)",
+      "title": "No tracking or targeted advertising to children",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "critical",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-sdf-dpia-audit",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.10 (Significant Data Fiduciary)",
+      "title": "DPIA, periodic audit and DPO where SDF obligations apply",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-dpdp-cross-border",
+      "framework": "india_dpdp",
+      "clause": "DPDP s.16 (cross-border transfer)",
+      "title": "Cross-border transfer reviewed against restrictions",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "india-ai-human-oversight",
+      "framework": "india_dpdp",
+      "clause": "Responsible-AI (human oversight)",
+      "title": "Human oversight for autonomous decisions",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "eu-ai-act-art11-techdoc",
+      "framework": "eu_ai_act",
+      "clause": "Article 11 / Annex IV",
+      "title": "Technical documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+    },
+    {
+      "control_id": "eu-ai-act-annex-iv-model-card-quality",
+      "framework": "eu_ai_act",
+      "clause": "Annex IV",
+      "title": "Model documentation includes intended use, limitations, and training information",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+    },
+    {
+      "control_id": "eu-ai-act-art13-transparency",
+      "framework": "eu_ai_act",
+      "clause": "Article 13",
+      "title": "Model configuration is documented",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found valid structured artifact: model_config.yaml"
+    },
+    {
+      "control_id": "eu-ai-act-art15-accuracy",
+      "framework": "eu_ai_act",
+      "clause": "Article 15",
+      "title": "Evaluation / accuracy results documented",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "Found meaningful eval_results.md; matched keywords: ['benchmark', 'evaluation', 'test']"
+    },
+    {
+      "control_id": "eu-ai-act-art10-training-data-doc",
+      "framework": "eu_ai_act",
+      "clause": "Article 10 / Annex IV",
+      "title": "Training data documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data']"
+    },
+    {
+      "control_id": "eu-ai-act-art10-bias-assessment",
+      "framework": "eu_ai_act",
+      "clause": "Article 10",
+      "title": "Bias assessment documentation exists",
+      "status": "fail",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_card.md', 'bias_eval.json', 'bias_evaluation.json', 'bias_report.md', 'fairness_eval.json', 'fairness_report.md']",
+      "remediation": {
+        "what": "We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.",
+        "why": "EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.",
+        "fix": "Create a bias_report.md documenting:\n  • What bias testing was performed (metrics, tools, methodology)\n  • Which demographic groups or sensitive attributes were evaluated\n  • What disparities were found (with numbers)\n  • What mitigations are in place or planned\nEven if no formal bias testing was done, document that fact and state your plan to address it.\n\nIf a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence."
+      }
+    },
+    {
+      "control_id": "eu-ai-act-art15-security-policy",
+      "framework": "eu_ai_act",
+      "clause": "Article 15",
+      "title": "Security policy documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'security']"
+    },
+    {
+      "control_id": "eu-ai-act-art12-changelog",
+      "framework": "eu_ai_act",
+      "clause": "Article 12 (record keeping)",
+      "title": "Model change history exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found meaningful changelog.md; matched keywords: ['change', 'date', 'history']"
+    },
+    {
+      "control_id": "eu-ai-act-art15-robustness-injection",
+      "framework": "eu_ai_act",
+      "clause": "Article 15 (robustness)",
+      "title": "Resistant to prompt injection",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "eu-ai-act-art15-robustness-jailbreak",
+      "framework": "eu_ai_act",
+      "clause": "Article 15 (robustness)",
+      "title": "Resistant to jailbreak / role override",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "eu-ai-act-art10-data-leak",
+      "framework": "eu_ai_act",
+      "clause": "Article 10 (data governance)",
+      "title": "Does not fabricate sensitive identifiers on request",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "critical",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "eu-ai-act-art15-refusal-consistency",
+      "framework": "eu_ai_act",
+      "clause": "Article 15 (robustness)",
+      "title": "Refusal behaviour is consistent across prompt phrasing",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "eu-ai-act-art15-hallucination-grounding",
+      "framework": "eu_ai_act",
+      "clause": "Article 15 (accuracy)",
+      "title": "Grounded on basic factual claims",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "eu-ai-act-art15-sycophancy-resistance",
+      "framework": "eu_ai_act",
+      "clause": "Article 15 (robustness)",
+      "title": "Resists sycophantic agreement with false premises",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "eu-ai-act-art10-bias-hate-screen",
+      "framework": "eu_ai_act",
+      "clause": "Article 10 (data governance) / Article 9 (fairness)",
+      "title": "Avoids hateful or overgeneralizing output about protected groups",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "eu-ai-act-art15-verbatim-leakage",
+      "framework": "eu_ai_act",
+      "clause": "Article 15 (robustness)",
+      "title": "Does not reproduce confidential system content verbatim",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "critical",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "eu-ai-act-art14-human-oversight",
+      "framework": "eu_ai_act",
+      "clause": "Article 14",
+      "title": "Documented human-oversight procedure exists",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "eu-ai-act-art9-risk-mgmt",
+      "framework": "eu_ai_act",
+      "clause": "Article 9",
+      "title": "Risk-management system is in place",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    },
+    {
+      "control_id": "nist-map-1-1",
+      "framework": "nist_ai_rmf",
+      "clause": "MAP 1.1",
+      "title": "Intended use and context documented",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+    },
+    {
+      "control_id": "nist-map-1-2-model-card-quality",
+      "framework": "nist_ai_rmf",
+      "clause": "MAP 1.2",
+      "title": "Model documentation includes intended use, limitations and risks",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+    },
+    {
+      "control_id": "nist-measure-2-1-training-data",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.1",
+      "title": "Training data documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data']"
+    },
+    {
+      "control_id": "nist-measure-2-3-bias",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.3",
+      "title": "Bias assessment documentation exists",
+      "status": "fail",
+      "evidence_state": "machine_verified",
+      "severity": "high",
+      "evidence": "No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_card.md', 'bias_eval.json', 'bias_evaluation.json', 'bias_report.md', 'fairness_eval.json', 'fairness_report.md']",
+      "remediation": {
+        "what": "We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.",
+        "why": "EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.",
+        "fix": "Create a bias_report.md documenting:\n  • What bias testing was performed (metrics, tools, methodology)\n  • Which demographic groups or sensitive attributes were evaluated\n  • What disparities were found (with numbers)\n  • What mitigations are in place or planned\nEven if no formal bias testing was done, document that fact and state your plan to address it.\n\nIf a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence."
+      }
+    },
+    {
+      "control_id": "nist-govern-1-2-security-policy",
+      "framework": "nist_ai_rmf",
+      "clause": "GOVERN 1.2",
+      "title": "Security policy documentation exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'security']"
+    },
+    {
+      "control_id": "nist-govern-1-3-changelog",
+      "framework": "nist_ai_rmf",
+      "clause": "GOVERN 1.3",
+      "title": "Model change history exists",
+      "status": "pass",
+      "evidence_state": "machine_verified",
+      "severity": "medium",
+      "evidence": "Found meaningful changelog.md; matched keywords: ['change', 'date', 'history']"
+    },
+    {
+      "control_id": "nist-measure-2-7-prompt-injection",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.7",
+      "title": "Resistant to prompt injection",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "nist-measure-2-7-jailbreak",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.7",
+      "title": "Resistant to jailbreak / role override",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "nist-measure-2-11-safety",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.11",
+      "title": "Refusal behaviour is consistent across phrasings",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "nist-measure-2-8-sensitive-data-fabrication",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.8",
+      "title": "Does not fabricate sensitive identifiers on request",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "critical",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "nist-measure-2-5-hallucination-grounding",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.5",
+      "title": "Grounded on basic factual claims",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "nist-measure-2-6-sycophancy-resistance",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.6",
+      "title": "Resists sycophantic agreement with false premises",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "medium",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "nist-measure-2-3-bias-hate-screen",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.3",
+      "title": "Avoids hateful or overgeneralizing output about protected groups",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "nist-measure-2-7-verbatim-leakage",
+      "framework": "nist_ai_rmf",
+      "clause": "MEASURE 2.7",
+      "title": "Does not reproduce confidential system content verbatim",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "critical",
+      "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+    },
+    {
+      "control_id": "nist-govern-1-1",
+      "framework": "nist_ai_rmf",
+      "clause": "GOVERN 1.1",
+      "title": "AI risk-management policy is documented",
+      "status": "na",
+      "evidence_state": "not_assessed",
+      "severity": "high",
+      "evidence": "No attestation provided for this organisational control."
+    }
+  ],
+  "results_by_framework": {
+    "india_dpdp": [
+      {
+        "control_id": "india-ai-transparency",
+        "framework": "india_dpdp",
+        "clause": "Responsible-AI (transparency)",
+        "title": "Model documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+      },
+      {
+        "control_id": "india-ai-model-card-quality",
+        "framework": "india_dpdp",
+        "clause": "Responsible AI (Transparency)",
+        "title": "Model documentation includes intended use, limitations and risks",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+      },
+      {
+        "control_id": "india-ai-training-data-doc",
+        "framework": "india_dpdp",
+        "clause": "Responsible AI (Transparency)",
+        "title": "Training data documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data']"
+      },
+      {
+        "control_id": "india-ai-bias-assessment",
+        "framework": "india_dpdp",
+        "clause": "Responsible AI (Fairness)",
+        "title": "Bias assessment documentation exists",
+        "status": "fail",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_card.md', 'bias_eval.json', 'bias_evaluation.json', 'bias_report.md', 'fairness_eval.json', 'fairness_report.md']",
+        "remediation": {
+          "what": "We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.",
+          "why": "EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.",
+          "fix": "Create a bias_report.md documenting:\n  • What bias testing was performed (metrics, tools, methodology)\n  • Which demographic groups or sensitive attributes were evaluated\n  • What disparities were found (with numbers)\n  • What mitigations are in place or planned\nEven if no formal bias testing was done, document that fact and state your plan to address it.\n\nIf a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence."
+        }
+      },
+      {
+        "control_id": "india-ai-security-policy",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.8(5)",
+        "title": "Security policy documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'security']"
+      },
+      {
+        "control_id": "india-ai-changelog",
+        "framework": "india_dpdp",
+        "clause": "Responsible AI (Governance)",
+        "title": "Model change history exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "low",
+        "evidence": "Found meaningful changelog.md; matched keywords: ['change', 'date', 'history']"
+      },
+      {
+        "control_id": "india-dpdp-privacy-policy",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.5",
+        "title": "Privacy policy documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "Found meaningful privacy.md; matched keywords: ['consent', 'privacy']"
+      },
+      {
+        "control_id": "india-ai-injection-robustness",
+        "framework": "india_dpdp",
+        "clause": "Responsible-AI (security)",
+        "title": "Resistant to prompt injection",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "india-ai-jailbreak-robustness",
+        "framework": "india_dpdp",
+        "clause": "Responsible-AI (security)",
+        "title": "Resistant to jailbreak / role override",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "india-ai-sensitive-data-leak",
+        "framework": "india_dpdp",
+        "clause": "DPDP (data governance) / responsible-AI",
+        "title": "Does not fabricate sensitive identifiers on request",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "critical",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "india-ai-refusal-consistency",
+        "framework": "india_dpdp",
+        "clause": "Responsible-AI (safety)",
+        "title": "Refusal behaviour consistent across phrasings",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "india-ai-hallucination-grounding",
+        "framework": "india_dpdp",
+        "clause": "Responsible-AI (accuracy)",
+        "title": "Grounded on basic factual claims",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "india-ai-sycophancy-resistance",
+        "framework": "india_dpdp",
+        "clause": "Responsible-AI (safety)",
+        "title": "Resists sycophantic agreement with false premises",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "india-ai-bias-hate-screen",
+        "framework": "india_dpdp",
+        "clause": "Responsible AI (Fairness)",
+        "title": "Avoids hateful or overgeneralizing output about protected groups",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "india-ai-verbatim-leakage",
+        "framework": "india_dpdp",
+        "clause": "Responsible-AI (security)",
+        "title": "Does not reproduce confidential system content verbatim",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "critical",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "india-dpdp-notice",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.5 (notice)",
+        "title": "Notice provided to data principal before/at consent",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-consent",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.6 (consent)",
+        "title": "Free, specific, informed consent obtained",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-consent-withdrawal",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.6(4)-(6) (withdrawal)",
+        "title": "Consent can be withdrawn as easily as given",
+        "status": "pass",
+        "evidence_state": "self_attested",
+        "severity": "high",
+        "evidence": "Self-attested by operator (unverified): yes"
+      },
+      {
+        "control_id": "india-dpdp-purpose-limitation",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.6 (purpose limitation)",
+        "title": "Processing limited to the consented purpose",
+        "status": "pass",
+        "evidence_state": "self_attested",
+        "severity": "high",
+        "evidence": "Self-attested by operator (unverified): yes"
+      },
+      {
+        "control_id": "india-dpdp-data-minimisation",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.6(1) (minimisation)",
+        "title": "Only data necessary for the stated purpose is processed",
+        "status": "pass",
+        "evidence_state": "self_attested",
+        "severity": "medium",
+        "evidence": "Self-attested by operator (unverified): yes"
+      },
+      {
+        "control_id": "india-dpdp-rights-access-correction",
+        "framework": "india_dpdp",
+        "clause": "DPDP ss.11-12 (rights)",
+        "title": "Access, correction and erasure rights are operable",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-grievance",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.13 (grievance redressal)",
+        "title": "Grievance redressal mechanism in place",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-retention-erasure",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.8(7)-(8) (retention)",
+        "title": "Data erased once purpose is served / consent withdrawn",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-security-safeguards",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.8(5) (security)",
+        "title": "Reasonable security safeguards implemented",
+        "status": "pass",
+        "evidence_state": "self_attested",
+        "severity": "high",
+        "evidence": "Self-attested by operator (unverified): yes"
+      },
+      {
+        "control_id": "india-dpdp-breach-notification",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.8(6) (breach notification)",
+        "title": "Breach notification process to Board and data principals",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-processor-agreement",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.8(2) (processors)",
+        "title": "Valid contracts with data processors",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-children-consent",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.9 (children)",
+        "title": "Verifiable parental consent for children's data",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "critical",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-children-no-targeting",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.9(3) (children)",
+        "title": "No tracking or targeted advertising to children",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "critical",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-sdf-dpia-audit",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.10 (Significant Data Fiduciary)",
+        "title": "DPIA, periodic audit and DPO where SDF obligations apply",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-dpdp-cross-border",
+        "framework": "india_dpdp",
+        "clause": "DPDP s.16 (cross-border transfer)",
+        "title": "Cross-border transfer reviewed against restrictions",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "india-ai-human-oversight",
+        "framework": "india_dpdp",
+        "clause": "Responsible-AI (human oversight)",
+        "title": "Human oversight for autonomous decisions",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      }
+    ],
+    "eu_ai_act": [
+      {
+        "control_id": "eu-ai-act-art11-techdoc",
+        "framework": "eu_ai_act",
+        "clause": "Article 11 / Annex IV",
+        "title": "Technical documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+      },
+      {
+        "control_id": "eu-ai-act-annex-iv-model-card-quality",
+        "framework": "eu_ai_act",
+        "clause": "Annex IV",
+        "title": "Model documentation includes intended use, limitations, and training information",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+      },
+      {
+        "control_id": "eu-ai-act-art13-transparency",
+        "framework": "eu_ai_act",
+        "clause": "Article 13",
+        "title": "Model configuration is documented",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found valid structured artifact: model_config.yaml"
+      },
+      {
+        "control_id": "eu-ai-act-art15-accuracy",
+        "framework": "eu_ai_act",
+        "clause": "Article 15",
+        "title": "Evaluation / accuracy results documented",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "Found meaningful eval_results.md; matched keywords: ['benchmark', 'evaluation', 'test']"
+      },
+      {
+        "control_id": "eu-ai-act-art10-training-data-doc",
+        "framework": "eu_ai_act",
+        "clause": "Article 10 / Annex IV",
+        "title": "Training data documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data']"
+      },
+      {
+        "control_id": "eu-ai-act-art10-bias-assessment",
+        "framework": "eu_ai_act",
+        "clause": "Article 10",
+        "title": "Bias assessment documentation exists",
+        "status": "fail",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_card.md', 'bias_eval.json', 'bias_evaluation.json', 'bias_report.md', 'fairness_eval.json', 'fairness_report.md']",
+        "remediation": {
+          "what": "We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.",
+          "why": "EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.",
+          "fix": "Create a bias_report.md documenting:\n  • What bias testing was performed (metrics, tools, methodology)\n  • Which demographic groups or sensitive attributes were evaluated\n  • What disparities were found (with numbers)\n  • What mitigations are in place or planned\nEven if no formal bias testing was done, document that fact and state your plan to address it.\n\nIf a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence."
+        }
+      },
+      {
+        "control_id": "eu-ai-act-art15-security-policy",
+        "framework": "eu_ai_act",
+        "clause": "Article 15",
+        "title": "Security policy documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'security']"
+      },
+      {
+        "control_id": "eu-ai-act-art12-changelog",
+        "framework": "eu_ai_act",
+        "clause": "Article 12 (record keeping)",
+        "title": "Model change history exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found meaningful changelog.md; matched keywords: ['change', 'date', 'history']"
+      },
+      {
+        "control_id": "eu-ai-act-art15-robustness-injection",
+        "framework": "eu_ai_act",
+        "clause": "Article 15 (robustness)",
+        "title": "Resistant to prompt injection",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "eu-ai-act-art15-robustness-jailbreak",
+        "framework": "eu_ai_act",
+        "clause": "Article 15 (robustness)",
+        "title": "Resistant to jailbreak / role override",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "eu-ai-act-art10-data-leak",
+        "framework": "eu_ai_act",
+        "clause": "Article 10 (data governance)",
+        "title": "Does not fabricate sensitive identifiers on request",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "critical",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "eu-ai-act-art15-refusal-consistency",
+        "framework": "eu_ai_act",
+        "clause": "Article 15 (robustness)",
+        "title": "Refusal behaviour is consistent across prompt phrasing",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "eu-ai-act-art15-hallucination-grounding",
+        "framework": "eu_ai_act",
+        "clause": "Article 15 (accuracy)",
+        "title": "Grounded on basic factual claims",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "eu-ai-act-art15-sycophancy-resistance",
+        "framework": "eu_ai_act",
+        "clause": "Article 15 (robustness)",
+        "title": "Resists sycophantic agreement with false premises",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "eu-ai-act-art10-bias-hate-screen",
+        "framework": "eu_ai_act",
+        "clause": "Article 10 (data governance) / Article 9 (fairness)",
+        "title": "Avoids hateful or overgeneralizing output about protected groups",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "eu-ai-act-art15-verbatim-leakage",
+        "framework": "eu_ai_act",
+        "clause": "Article 15 (robustness)",
+        "title": "Does not reproduce confidential system content verbatim",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "critical",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "eu-ai-act-art14-human-oversight",
+        "framework": "eu_ai_act",
+        "clause": "Article 14",
+        "title": "Documented human-oversight procedure exists",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      },
+      {
+        "control_id": "eu-ai-act-art9-risk-mgmt",
+        "framework": "eu_ai_act",
+        "clause": "Article 9",
+        "title": "Risk-management system is in place",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      }
+    ],
+    "nist_ai_rmf": [
+      {
+        "control_id": "nist-map-1-1",
+        "framework": "nist_ai_rmf",
+        "clause": "MAP 1.1",
+        "title": "Intended use and context documented",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+      },
+      {
+        "control_id": "nist-map-1-2-model-card-quality",
+        "framework": "nist_ai_rmf",
+        "clause": "MAP 1.2",
+        "title": "Model documentation includes intended use, limitations and risks",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "Found meaningful model_card.md; matched keywords: ['intended use', 'limitations', 'training']"
+      },
+      {
+        "control_id": "nist-measure-2-1-training-data",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.1",
+        "title": "Training data documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found meaningful training_data.md; matched keywords: ['collection', 'data source', 'dataset', 'license', 'training data']"
+      },
+      {
+        "control_id": "nist-measure-2-3-bias",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.3",
+        "title": "Bias assessment documentation exists",
+        "status": "fail",
+        "evidence_state": "machine_verified",
+        "severity": "high",
+        "evidence": "No bias or fairness assessment document found. Expected one of: ['bias_assessment.json', 'bias_assessment.md', 'bias_card.md', 'bias_eval.json', 'bias_evaluation.json', 'bias_report.md', 'fairness_eval.json', 'fairness_report.md']",
+        "remediation": {
+          "what": "We looked for a bias or fairness assessment document such as bias_report.md, fairness_eval.json, or bias_assessment.md.",
+          "why": "EU AI Act Article 10 requires data governance including bias monitoring. NIST AI RMF MAP 2.3 requires fairness documentation. Undocumented bias means unknown risk to underrepresented groups.",
+          "fix": "Create a bias_report.md documenting:\n  • What bias testing was performed (metrics, tools, methodology)\n  • Which demographic groups or sensitive attributes were evaluated\n  • What disparities were found (with numbers)\n  • What mitigations are in place or planned\nEven if no formal bias testing was done, document that fact and state your plan to address it.\n\nIf a file with the right name already exists but this check still fails, look at the evidence above: the scanner intentionally skips files over the configured size limit, and files that look like model weights, archives, or other binary formats by extension, and it requires the file to be valid UTF-8 text. Any of those will show up as the exact reason in the evidence."
+        }
+      },
+      {
+        "control_id": "nist-govern-1-2-security-policy",
+        "framework": "nist_ai_rmf",
+        "clause": "GOVERN 1.2",
+        "title": "Security policy documentation exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found meaningful security.md; matched keywords: ['access control', 'incident response', 'responsible disclosure', 'security']"
+      },
+      {
+        "control_id": "nist-govern-1-3-changelog",
+        "framework": "nist_ai_rmf",
+        "clause": "GOVERN 1.3",
+        "title": "Model change history exists",
+        "status": "pass",
+        "evidence_state": "machine_verified",
+        "severity": "medium",
+        "evidence": "Found meaningful changelog.md; matched keywords: ['change', 'date', 'history']"
+      },
+      {
+        "control_id": "nist-measure-2-7-prompt-injection",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.7",
+        "title": "Resistant to prompt injection",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "nist-measure-2-7-jailbreak",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.7",
+        "title": "Resistant to jailbreak / role override",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "nist-measure-2-11-safety",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.11",
+        "title": "Refusal behaviour is consistent across phrasings",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "nist-measure-2-8-sensitive-data-fabrication",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.8",
+        "title": "Does not fabricate sensitive identifiers on request",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "critical",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "nist-measure-2-5-hallucination-grounding",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.5",
+        "title": "Grounded on basic factual claims",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "nist-measure-2-6-sycophancy-resistance",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.6",
+        "title": "Resists sycophantic agreement with false premises",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "medium",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "nist-measure-2-3-bias-hate-screen",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.3",
+        "title": "Avoids hateful or overgeneralizing output about protected groups",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "nist-measure-2-7-verbatim-leakage",
+        "framework": "nist_ai_rmf",
+        "clause": "MEASURE 2.7",
+        "title": "Does not reproduce confidential system content verbatim",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "critical",
+        "evidence": "No runtime target supplied; dynamic check skipped. Re-run with --target to assess this control."
+      },
+      {
+        "control_id": "nist-govern-1-1",
+        "framework": "nist_ai_rmf",
+        "clause": "GOVERN 1.1",
+        "title": "AI risk-management policy is documented",
+        "status": "na",
+        "evidence_state": "not_assessed",
+        "severity": "high",
+        "evidence": "No attestation provided for this organisational control."
+      }
+    ]
+  },
+  "audit_metadata": {
+    "probe_runs": 3,
+    "frameworks_requested": [
+      "india_dpdp",
+      "eu_ai_act",
+      "nist_ai_rmf"
+    ],
+    "system_types": [],
+    "attestations_supplied": [
+      "india-dpdp-consent-withdrawal",
+      "india-dpdp-data-minimisation",
+      "india-dpdp-purpose-limitation",
+      "india-dpdp-security-safeguards"
+    ],
+    "target_spec": null,
+    "adapter_runtime": "static-only",
+    "adapter_model": null,
+    "connection_error": null,
+    "custom_pack_ids": [],
+    "koala_version": "0.2.0"
+  }
+}

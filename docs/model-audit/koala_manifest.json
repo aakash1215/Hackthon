@@ -1,0 +1,30 @@
+{
+  "manifest_version": "1.0",
+  "algorithm": "sha256",
+  "created_at": "2026-10-16T12:00:13.567170+00:00",
+  "integrity_note": "SHA-256 digests detect modification of these artifacts; they do not prove authorship and are not a cryptographic signature. A digest is only trustworthy if this manifest is stored somewhere an editor of the artifacts cannot also modify.",
+  "signed": false,
+  "artifacts": [
+    {
+      "filename": "koala_report.html",
+      "algorithm": "sha256",
+      "digest": "7c3cacc31dddbbc3554d4ebf3663a0f9ae4a6418610fb7c4b084596a5d2620d6",
+      "bytes": 207432
+    },
+    {
+      "filename": "koala_report.json",
+      "algorithm": "sha256",
+      "digest": "634babf1a6ea7ccf278951b5e27b3af5092f2f0ed3c11971c017b0e159766fde",
+      "bytes": 63733
+    },
+    {
+      "filename": "koala_report.md",
+      "algorithm": "sha256",
+      "digest": "b8e3a1a6321302e538ef7fa63ca8dc7182a9ac94cfec18d660edac11edf38e17",
+      "bytes": 18688
+    }
+  ],
+  "audit_id": "a20bd1c7-b2e3-4051-bc33-7a43faae3148",
+  "schema_version": "0.4",
+  "report_content_hash": "018baf4020b151570b6c7136f7dd402d62e68a0b01b1f4c836795fac684324b1"
+}
