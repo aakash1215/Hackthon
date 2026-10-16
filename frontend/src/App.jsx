@@ -32,7 +32,8 @@ async function checkAccount(p) {
   try {
     await apiJson('GET', `/api/workers/${encodeURIComponent(p.worker_id)}`, null, { timeoutMs: 8000 })
   } catch (e) {
-    if (e.code !== 'WORKER_NOT_FOUND' || (await getJobs()).length) return
+    // Failed jobs (4xx, e.g. uploads for this missing account) never retry, so they must not keep it logged in.
+    if (e.code !== 'WORKER_NOT_FOUND' || (await getJobs()).some((j) => !j.failed)) return
     await clearPhone()
     window.location.replace('/')
   }

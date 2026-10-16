@@ -65,6 +65,17 @@ def test_dictate_without_consent_drops_audio(stub_asr):
     assert not list((settings.data_dir / "media" / "dictation").glob("*/*"))
 
 
+def test_confirm_zone_changes_only_zone():
+    client.post("/api/workers", json={"id": "z1", "display_name": "Z", "language": "hi", "category": "unskilled"})
+    client.post("/api/sites", json={"worker_id": "z1", "name": "Site Z", "city": "पुणे", "state": "Maharashtra",
+                                    "zone": "I", "principal_employer": "Example Dev"})
+    assert client.post("/api/sites/zone", json={"worker_id": "nobody", "zone": "II"}).status_code == 404
+    r = client.post("/api/sites/zone", json={"worker_id": "z1", "zone": "II"})
+    assert r.status_code == 200 and r.json()["zone_confirmed"] is True
+    site = client.get("/api/workers/z1").json()["site"]
+    assert (site["zone"], site["zone_confirmed"], site["name"], site["principal_employer"]) == ("II", 1, "Site Z", "Example Dev")
+
+
 def test_dictate_asr_down(stub_asr):
     stub_asr["error"] = "ASR_MODEL_LOAD_FAILED"
     assert _post(field="name").status_code == 503

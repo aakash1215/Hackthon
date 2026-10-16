@@ -220,6 +220,24 @@ def upsert_site(body: SiteIn):
     return {"id": sid, "site_gps_saved": lat is not None, "gps_dropped": body.site_lat is not None and not gps_ok}
 
 
+class ZoneIn(BaseModel):
+    worker_id: str
+    zone: Literal["I", "II", "III"]
+
+
+@router.post("/api/sites/zone")
+def confirm_zone(body: ZoneIn):
+    """The worker picks + confirms the wage zone (from the हिसाब screen). Only the zone fields change."""
+    with db.write() as c:
+        site = _site_for(c, body.worker_id)
+        if not site:
+            raise HTTPException(404, "SITE_NOT_SET")
+        c.execute("UPDATE sites SET zone=?, zone_confirmed=1 WHERE id=?", (body.zone, site["id"]))
+        events.append(c, "SITE_SET", {"site_id": site["id"], "sphere": site["sphere"], "zone": body.zone,
+                                       "zone_confirmed": True}, body.worker_id)
+    return {"site_id": site["id"], "zone": body.zone, "zone_confirmed": True}
+
+
 class PartyIn(BaseModel):
     worker_id: str
     site_id: str | None = None
