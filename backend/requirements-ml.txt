@@ -1,0 +1,2 @@
+# Installed on the inference machine (GPU or CPU), not needed for tests
+faster-whisper==1.1.1

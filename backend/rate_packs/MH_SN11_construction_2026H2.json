@@ -1,0 +1,44 @@
+{
+  "pack_id": "MH-SN11-2026-07-01_2026-12-31",
+  "sphere": "state",
+  "state": "Maharashtra",
+  "employment": {
+    "sn": 11,
+    "en": "Road construction, maintenance, construction industry",
+    "mr": "रस्ते तयार करणे, देखरेख करणे, बांधकाम उद्योग"
+  },
+  "effective_from": "2026-07-01",
+  "effective_to": "2026-12-31",
+  "unit": "INR_per_month",
+  "rate_tuple": ["basic", "special_allowance", "total"],
+  "rates": {
+    "unskilled":    {"I": [19265, 3198, 22463], "II": [18400, 3198, 21598], "III": [17530, 3198, 20728]},
+    "semi_skilled": {"I": [20345, 3198, 23543], "II": [19475, 3198, 22673], "III": [18610, 3198, 21808]},
+    "skilled":      {"I": [21860, 3198, 25058], "II": [20990, 3198, 24188], "III": [20125, 3198, 23323]},
+    "highly_skilled": "same_as_skilled"
+  },
+  "conversion": {
+    "daily_divisor": 26,
+    "normal_hours": 8,
+    "ot_multiplier": 2,
+    "status": "ASSUMED_VERIFY_FOR_STATE"
+  },
+  "zones": {
+    "I": "Municipal corporation limits, cantonments, industrial areas within 20 km (verify for this schedule)",
+    "II": "A/B class municipal councils (verify)",
+    "III": "Rest of state"
+  },
+  "source": {
+    "notification_no": "RuralDevelopment/MWRules/Special Allowance/2026(2)/office-10/7997",
+    "date": "2026-08-05",
+    "issuer": "Office of the Commissioner of Labour, Mumbai — Dy. Labour Commissioner (Rural Development) & Competent Authority under the Minimum Wages Act, 1948",
+    "documents": [
+      {
+        "title": "English translation (SGCMS)",
+        "url": "https://www.sgcms.com/regulatory-updates/wp-content/uploads/2026/08/Translation-revised-DA-Notification-w.e.f-01.07.2026-to-31.12.2026.pdf",
+        "retrieved": "2026-10-13"
+      }
+    ],
+    "verification_status": "SECONDARY_TRANSLATION_VERIFY_ORIGINAL"
+  }
+}

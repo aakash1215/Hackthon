@@ -1,0 +1,45 @@
+{
+  "pack_id": "CENTRAL-CONSTRUCTION-2026-10-01",
+  "sphere": "central",
+  "state": null,
+  "employment": {
+    "sn": null,
+    "en": "Construction or maintenance of roads, runways, buildings and specified utility works (central sphere)",
+    "mr": null
+  },
+  "effective_from": "2026-10-01",
+  "effective_to": "2027-03-31",
+  "unit": "INR_per_day",
+  "rate_tuple": ["total"],
+  "rates": {
+    "unskilled":      {"A": [840],  "B": [704],  "C": [565]},
+    "semi_skilled":   {"A": [933],  "B": [794],  "C": [661]},
+    "skilled":        {"A": [1024], "B": [933],  "C": [794]},
+    "highly_skilled": {"A": [1111], "B": [1024], "C": [933]}
+  },
+  "conversion": {
+    "daily_divisor": 1,
+    "normal_hours": 8,
+    "ot_multiplier": 2,
+    "status": "CENTRAL_RULES_2026_R3"
+  },
+  "zones": {
+    "A": "Area A (verify classification)",
+    "B": "Area B (verify classification)",
+    "C": "Area C (verify classification)"
+  },
+  "source": {
+    "notification_no": "Central VDA revision w.e.f. 01.10.2026 (issuing office unconfirmed)",
+    "date": "2026-10-01",
+    "issuer": "Chief Labour Commissioner (Central) — unconfirmed",
+    "documents": [
+      {
+        "title": "Consolidated table (staffnews)",
+        "url": "https://www.staffnews.in/wp-content/uploads/2026/10/Minimum-Wages-VDA-order-October-2026.pdf",
+        "retrieved": "2026-10-13"
+      }
+    ],
+    "verification_status": "SECONDARY_CONSOLIDATION_VERIFY_ORIGINAL",
+    "note": "effective_to is an assumption (next VDA revision due 01.04.2027)."
+  }
+}
