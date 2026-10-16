@@ -1,22 +1,64 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AppCtx } from './components/Ui.jsx'
+import { getProfile, saveProfile } from './lib/db.js'
+import { startSync, subscribe } from './lib/sync.js'
+import Onboarding from './screens/Onboarding.jsx'
+import Home from './screens/Home.jsx'
+import Record from './screens/Record.jsx'
+import Saved from './screens/Saved.jsx'
+import Confirm from './screens/Confirm.jsx'
+import Ledger from './screens/Ledger.jsx'
+import Hisaab from './screens/Hisaab.jsx'
+import FileTab from './screens/FileTab.jsx'
+import Settings from './screens/Settings.jsx'
+import Later from './screens/Later.jsx'
 
-// P0 placeholder: shows hub health. P2 replaces this with the screens cloned from UI/.
+const SCREENS = { home: Home, record: Record, saved: Saved, confirm: Confirm, ledger: Ledger, hisaab: Hisaab, file: FileTab, settings: Settings, later: Later }
+
 export default function App() {
-  const [health, setHealth] = useState(null)
-  const [error, setError] = useState(null)
+  const [profile, setProfileState] = useState(undefined) // undefined = loading
+  const [stack, setStack] = useState([{ name: 'home', params: {} }])
+  const [sync, setSync] = useState({})
+  const [toastMsg, setToastMsg] = useState(null)
 
   useEffect(() => {
-    fetch('/api/health')
-      .then((r) => r.json())
-      .then(setHealth)
-      .catch((e) => setError(String(e)))
+    getProfile().then((p) => setProfileState(p || null)).catch(() => setProfileState(null))
+    startSync()
+    return subscribe(setSync)
   }, [])
 
+  const toast = useCallback((msg) => {
+    setToastMsg(msg)
+    setTimeout(() => setToastMsg(null), 3200)
+  }, [])
+
+  const setProfile = useCallback(async (p) => {
+    await saveProfile(p)
+    setProfileState(p)
+  }, [])
+
+  const nav = useMemo(() => ({
+    go: (name, params = {}) => { setStack((s) => [...s, { name, params }]); window.scrollTo(0, 0) },
+    back: () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)),
+    reset: (name, params = {}) => { setStack([{ name, params }]); window.scrollTo(0, 0) },
+    replace: (name, params = {}) => setStack((s) => [...s.slice(0, -1), { name, params }]),
+  }), [])
+
+  const ctx = { ...nav, profile, setProfile, sync, toast }
+
+  let body
+  if (profile === undefined) body = null
+  else if (!profile || !profile.onboarded) body = <Onboarding />
+  else {
+    const top = stack[stack.length - 1]
+    const Screen = SCREENS[top.name] || Home
+    body = <Screen key={stack.length + top.name} {...top.params} />
+  }
+
   return (
-    <main>
-      <h1>अपना हिसाब</h1>
-      {error && <p>Hub not reachable: {error}</p>}
-      {health ? <pre>{JSON.stringify(health, null, 2)}</pre> : !error && <p>…</p>}
-    </main>
+    <AppCtx.Provider value={ctx}>
+      {body}
+      {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
+    </AppCtx.Provider>
   )
 }

@@ -1,6 +1,2 @@
 @import './styles/tokens.css';
-
-* { box-sizing: border-box; }
-html, body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
-/* Mobile-only layout; on desktop the same layout is centred. */
-#root { max-width: var(--app-max-width); min-height: 100dvh; margin: 0 auto; padding: 16px; }
+@import './styles/app.css';

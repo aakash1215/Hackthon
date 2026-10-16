@@ -346,6 +346,8 @@ def process_entry(entry_id: str):
     if e["status"] == "confirmed":
         raise HTTPException(409, "ALREADY_CONFIRMED")
 
+    if not e["audio_path"]:
+        raise HTTPException(409, "NO_AUDIO")
     original = settings.data_dir / e["audio_path"]
     wav = original.parent / "16k.wav"
     try:
@@ -369,10 +371,11 @@ def process_entry(entry_id: str):
 
     llm_error = None
     llm = None
-    try:
-        llm = extract.extract(e["kind"], transcript, rec.isoformat(), context or None)
-    except extract.LLMUnavailable as ex:
-        llm_error = ex.args[0]
+    if transcript.strip():  # nothing said → nothing to extract; skip the slow LLM call
+        try:
+            llm = extract.extract(e["kind"], transcript, rec.isoformat(), context or None)
+        except extract.LLMUnavailable as ex:
+            llm_error = ex.args[0]
 
     rec_out = reconcile.reconcile(e["kind"], llm, norm, transcript, rec, segments, defaults)
     new_status = "saved" if llm_error else "processed"
@@ -443,6 +446,54 @@ def tombstone_entry(entry_id: str):
         events.append(c, "ENTRY_DELETED", {"entry_id": entry_id, "content_sha256": e["audio_sha256"]},
                       e["worker_id"])
     return {"entry_id": entry_id, "status": "deleted"}
+
+
+@router.post("/api/entries/copy-yesterday")
+def copy_yesterday(worker_id: str = Form(...), client_ts: str = Form(...)):
+    """'Same as yesterday': a workday entry copied from the last confirmed day. It has no audio, so its
+    SHA-256 is over the template content. Every copied field is amber until the worker confirms it."""
+    try:
+        today = date.fromisoformat(client_ts[:10])
+    except ValueError as e:
+        raise HTTPException(422, "BAD_CLIENT_TS") from e
+    with db.read() as c:
+        if not _row(c, "workers", worker_id):
+            raise HTTPException(404, "WORKER_NOT_FOUND")
+        prev = [r for r in _confirmed(c, worker_id, None, today.isoformat()) if r["kind"] == "workday"]
+        site = _site_for(c, worker_id)
+    prev = sorted((r for r in prev if r["day"] < today.isoformat()), key=lambda r: r["day"])
+    if not prev:
+        raise HTTPException(404, "NO_PREVIOUS_DAY")
+    src = prev[-1]["confirmed"]
+    values = {
+        "work_date": today.isoformat(),
+        "start_time": src.get("start_time"),
+        "end_time": src.get("end_time"),
+        "break_minutes": src.get("break_minutes"),
+        "worked": "yes",
+        "contractor_name": src.get("contractor_name"),
+    }
+    fields = {}
+    for name, v in values.items():
+        fields[name] = {"value": v, "status": "amber" if v not in (None, "") else "none",
+                        "candidates": [v] if v not in (None, "") else [], "evidence": None, "span": None,
+                        "flags": ["COPIED_FROM_PREVIOUS_DAY"] if v not in (None, "") else [], "source": "copy"}
+    reconciled = {"fields": fields, "summary": {"green": 0, "amber": sum(1 for f in fields.values() if f["status"] == "amber"),
+                                                 "red": 0, "none": sum(1 for f in fields.values() if f["status"] == "none")}}
+    template_sha = _sha(json.dumps(values, sort_keys=True, ensure_ascii=False).encode("utf-8"))
+    entry_id = uuid.uuid4().hex[:16]
+    server_ts = _now()
+    with db.write() as c:
+        c.execute(
+            "INSERT INTO entries (id, worker_id, site_id, kind, speaker, language, audio_path, audio_sha256, "
+            "client_ts, server_ts, status, reconciled, error) VALUES (?,?,?, 'workday', 'worker', 'mr', '', ?, ?, ?, "
+            "'processed', ?, NULL)",
+            (entry_id, worker_id, site["id"] if site else None, template_sha, client_ts, server_ts,
+             json.dumps(reconciled, ensure_ascii=False)),
+        )
+        events.append(c, "ENTRY_COPIED_YESTERDAY", {"entry_id": entry_id, "from_day": src.get("work_date"),
+                                                   "template_sha256": template_sha}, worker_id, client_ts)
+    return {"entry_id": entry_id, "status": "processed", "fields": fields, "summary": reconciled["summary"]}
 
 
 # --- ledger and hisaab -------------------------------------------------------

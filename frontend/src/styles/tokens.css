@@ -1,8 +1,49 @@
-/* Design tokens. P2 replaces these with the values extracted from UI/ (G0 design system). */
+/* Design tokens cloned from UI/ (G0 design system + rendered screens).
+   Colours are sampled from the rendered PNGs: where a G0 hex label disagrees with its swatch,
+   the rendered colour wins (e.g. the primary button renders brown #6C3D02). */
 :root {
-  --font-body: 'Noto Sans Devanagari', system-ui, sans-serif;
-  --color-bg: #ffffff;
-  --color-text: #1a1a1a;
-  --app-max-width: 430px;
+  /* brand + surfaces */
+  --brand: #6c3d02;            /* primary button, selected ring, mic, hero card */
+  --brand-ink: #ffffff;
+  --blue-soft: #eef0fa;        /* selected card, mic card, "सुनें" pill, info rows */
+  --blue-ring: #dde0f4;        /* mic halo */
+  --blue-ink: #2e3a8c;         /* link-like text: सुनें, बदलें, दबाएँ और बोलें */
+  --paper: #e4d5c4;            /* page background under the paper texture */
+  --surface: #f6f7fb;          /* keypad keys, quiet rows */
+  --card: #ffffff;
+  --cream: #efede0;            /* "ठीक" chip, trust chip */
+  --text: #14172b;
+  --text-2: #5a6072;
+  --text-3: #8b90a0;
+  --border: #e3e6ef;
+
+  /* status (three colours only) */
+  --ok: #15803d;               /* ✓ ठीक */
+  --ok-bg: #efede0;
+  --ask: #a15c07;              /* ? पक्का करें */
+  --ask-bg: #fff4db;
+  --ask-border: #f2c46d;
+  --urgent: #c62828;           /* ! बताना ज़रूरी */
+  --urgent-bg: #fdecec;
+  --whatsapp: #1fa855;
+
+  /* type (Noto Sans Devanagari, bundled) — sizes from G0 at 360 px width */
+  --font: 'Noto Sans Devanagari', system-ui, sans-serif;
+  --fs-amount: 34px;
+  --fs-title: 22px;
+  --fs-card: 18px;
+  --fs-body: 16px;
+  --fs-label: 14px;
+  --fs-small: 12.5px;
+
+  /* shape + rhythm */
+  --radius-card: 20px;
+  --radius-btn: 16px;
+  --radius-pill: 999px;
+  --gutter: 20px;
   --tap-min: 48px;
+  --btn-h: 58px;
+  --app-max-width: 430px;
+  --shadow-card: 0 1px 2px rgba(20, 23, 43, 0.06);
+  --tabbar-h: 72px;
 }

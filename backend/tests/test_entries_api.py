@@ -212,3 +212,35 @@ def test_photo_is_hashed_and_recorded(stub_models):
     with db.read() as c:
         types = [row["type"] for row in c.execute("SELECT type FROM events ORDER BY seq")]
     assert "PHOTO_SAVED" in types
+
+
+def test_copy_yesterday_creates_amber_entry_without_audio(stub_models):
+    _worker()
+    _site()
+    assert client.post("/api/entries/copy-yesterday", data={"worker_id": "w1", "client_ts": "2026-10-16T09:00:00+05:30"}).status_code == 404
+    stub_models["text"] = MR_WORKDAY
+    stub_models["llm"] = _null("workday", {"start_time": {"value": "9:00 AM", "evidence": "सकाळी नऊ वाजता"}})
+    eid = _save("workday", client_ts="2026-10-15T20:00:00+05:30").json()["entry_id"]
+    client.post(f"/api/entries/{eid}/process")
+    client.post(f"/api/entries/{eid}/confirm", json={"fields": {"work_date": "2026-10-15", "start_time": "09:00",
+                                                                  "end_time": "18:00", "break_minutes": 60, "worked": "yes"}})
+    r = client.post("/api/entries/copy-yesterday", data={"worker_id": "w1", "client_ts": "2026-10-16T09:00:00+05:30"})
+    assert r.status_code == 200, r.text
+    f = r.json()["fields"]
+    assert f["work_date"]["value"] == "2026-10-16" and f["start_time"]["value"] == "09:00"
+    assert all(x["status"] in ("amber", "none") for x in f.values())  # nothing is pre-confirmed
+    new_id = r.json()["entry_id"]
+    assert client.post(f"/api/entries/{new_id}/process").status_code == 409  # no audio to process
+    ok = client.post(f"/api/entries/{new_id}/confirm", json={"fields": {"work_date": "2026-10-16", "start_time": "09:00",
+                                                                       "end_time": "18:00", "break_minutes": 60, "worked": "yes"}})
+    assert ok.status_code == 200
+    assert len(client.get("/api/ledger", params={"worker_id": "w1"}).json()["days"]) == 2
+
+
+def test_empty_transcript_skips_llm(stub_models):
+    _worker()
+    stub_models["text"] = ""
+    stub_models["llm_error"] = "SHOULD_NOT_BE_CALLED"
+    eid = _save("workday").json()["entry_id"]
+    p = client.post(f"/api/entries/{eid}/process").json()
+    assert p["status"] == "processed" and p["error"] is None
